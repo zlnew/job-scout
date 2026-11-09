@@ -83,101 +83,131 @@
       "company": "Kredivo Group",
       "role": "Senior Backend Engineer - Golang (SDE 3)",
       "score": null,
-      "status": "stretch",
+      "status": "scored",
       "channel": "LinkedIn",
       "posted": "2026-11-02",
       "url": "https://www.linkedin.com/jobs/view/4468700236",
-      "notes": "Senior scope. Resume lacks scale/throughput numbers."
+      "notes": "Senior scope. Resume lacks scale/throughput numbers.",
+      "tags": [
+        "stretch"
+      ]
     },
     {
       "company": "Ajaib",
       "role": "Senior Backend Engineer I - Platform",
       "score": null,
-      "status": "stretch",
+      "status": "scored",
       "channel": "LinkedIn",
       "posted": "2026-11-04",
       "url": "https://www.linkedin.com/jobs/view/4487207111",
-      "notes": "Platform + senior: K8s depth is the gap."
+      "notes": "Platform + senior: K8s depth is the gap.",
+      "tags": [
+        "stretch"
+      ]
     },
     {
       "company": "Ajaib",
       "role": "Senior Backend Engineer II - Platform",
       "score": null,
-      "status": "stretch",
+      "status": "scored",
       "channel": "LinkedIn",
       "posted": "2026-11-04",
       "url": "https://www.linkedin.com/jobs/view/4487225584",
-      "notes": "Platform + senior."
+      "notes": "Platform + senior.",
+      "tags": [
+        "stretch"
+      ]
     },
     {
       "company": "Ajaib",
       "role": "Staff Engineer (Backend) - Platform",
       "score": null,
-      "status": "stretch",
+      "status": "scored",
       "channel": "LinkedIn",
       "posted": "2026-11-08",
       "url": "https://www.linkedin.com/jobs/view/4488762222",
-      "notes": "Staff scope, two levels up."
+      "notes": "Staff scope, two levels up.",
+      "tags": [
+        "stretch"
+      ]
     },
     {
       "company": "Xenith",
       "role": "Senior Software Engineer, Backend",
       "score": null,
-      "status": "stretch",
+      "status": "scored",
       "channel": "LinkedIn",
       "posted": "2026-11-02",
       "url": "https://www.linkedin.com/jobs/view/4486163068",
-      "notes": "Senior backend."
+      "notes": "Senior backend.",
+      "tags": [
+        "stretch"
+      ]
     },
     {
       "company": "Qoala",
       "role": "Senior Software Engineer (Backend)",
       "score": null,
-      "status": "stretch",
+      "status": "scored",
       "channel": "LinkedIn",
       "posted": "2026-10-08",
       "url": "https://www.linkedin.com/jobs/view/4484304813",
-      "notes": "Insurtech, senior scope."
+      "notes": "Insurtech, senior scope.",
+      "tags": [
+        "stretch"
+      ]
     },
     {
       "company": "Cermati Fintech Group",
       "role": "Senior Software Engineer",
       "score": null,
-      "status": "stretch",
+      "status": "scored",
       "channel": "LinkedIn",
       "posted": "2026-11-02",
       "url": "https://www.linkedin.com/jobs/view/4459666637",
-      "notes": "Fintech, senior scope."
+      "notes": "Fintech, senior scope.",
+      "tags": [
+        "stretch"
+      ]
     },
     {
       "company": "Grab",
       "role": "Senior Software Engineer, Backend",
       "score": null,
-      "status": "stretch",
+      "status": "scored",
       "channel": "LinkedIn",
       "posted": "2026-10-20",
       "url": "https://www.linkedin.com/jobs/view/4473078381",
-      "notes": "Large-scale distributed systems; gap."
+      "notes": "Large-scale distributed systems; gap.",
+      "tags": [
+        "stretch"
+      ]
     },
     {
       "company": "Noraa & Co.",
       "role": "Senior Backend Engineer",
       "score": null,
-      "status": "stretch",
+      "status": "scored",
       "channel": "LinkedIn",
       "posted": "2026-07-14",
       "url": "https://www.linkedin.com/jobs/view/4439800450",
-      "notes": "Senior backend."
+      "notes": "Senior backend.",
+      "tags": [
+        "stretch"
+      ]
     },
     {
       "company": "Bibit.id",
       "role": "Senior Backend Engineer (Crypto)",
       "score": null,
-      "status": "stretch",
+      "status": "scored",
       "channel": "LinkedIn",
       "posted": "2026-05-07",
       "url": "https://www.linkedin.com/jobs/view/4409273945",
-      "notes": "Crypto accepted per answers.md; seniority is the only gap."
+      "notes": "Crypto accepted per answers.md; seniority is the only gap.",
+      "tags": [
+        "stretch"
+      ]
     },
     {
       "company": "Grab",

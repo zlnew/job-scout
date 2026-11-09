@@ -7,10 +7,12 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from './browser.mjs';
+import { STATES } from '../core/ledger.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const FOLLOW_UP_DAYS = 7;
-const STATUS_ORDER = ['applied', 'interview', 'offer', 'shortlisted', 'stretch', 'rejected'];
+// Display order follows the ledger state machine so the board can never invent a status.
+const STATUS_ORDER = STATES.filter((state) => state !== 'discovered');
 
 const esc = (value) =>
   String(value ?? '')
@@ -50,7 +52,7 @@ export function buildBoard({ applications, today = new Date().toISOString().slic
   const body = rows
     .map((app) => {
       const due = followUpOf(app);
-      const isDue = due !== null && app.status === 'applied' && due <= today;
+      const isDue = due !== null && app.status === 'submitted' && due <= today;
       const cells = [
         `<td class="score">${app.score ?? '—'}</td>`,
         `<td class="company">${esc(app.company)}</td>`,

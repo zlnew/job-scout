@@ -58,6 +58,14 @@ due (applied + 7 days). `board.html` is generated and gitignored; `applications.
 committed truth. No database on purpose: at 5–10 applications/week `node:sqlite` can import this
 file later if trends are ever worth querying.
 
+## Ledger (`core/ledger.mjs`)
+
+The machine state is `discovered → scored → shortlisted → resolved → prepared → submitted →
+interview | rejected | offer`, with recoverable `blocked` and terminal `skipped`. Illegal edges
+throw, so a double submission cannot pass `applyTransition`. `upsertRecord` merges by the guard's
+identity key, and `appendEvent` appends `{ ts, action, key, ... }` lines to `data/events.jsonl`;
+`readStore`/`writeStore` own the 2-space JSON and `updated`/`applications` key order.
+
 ## Find postings (no pasting URLs needed)
 
 ```bash
