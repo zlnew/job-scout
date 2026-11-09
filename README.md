@@ -17,6 +17,14 @@ node scripts/login.mjs https://www.linkedin.com/login   # log in by hand, close 
 session cookies). Log in once per site; later runs reuse the session. Credentials are never
 scripted or stored by this harness.
 
+## Answer bank (`data/profile.json`)
+
+`data/profile.json` is the machine-readable answer bank: every answer is `{ value, source, scope }`
+where `source` is `confirmed` (Maul said it in `answers.md`) or `derived` (computed from
+`career.json`). There is no `assumed` source; a question neither file answers is listed in
+`blockedTopics` and must be asked instead of guessed. `core/guard.mjs` validates the file
+(`loadProfile`) and refuses a submission with missing provenance or a duplicate identity key.
+
 ## Cover letter (reusable generator)
 
 ```bash

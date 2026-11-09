@@ -1,0 +1,476 @@
+{
+  "meta": {
+    "generatedFrom": [
+      "job-apply/answers.md",
+      "repo/neo-portfolio/content/career.json"
+    ],
+    "generatedAt": "2026-11-09",
+    "note": "Every answer is confirmed by Maul in answers.md or derived from career.json. Nothing is assumed: a plausible screening question that neither source answers is listed in blockedTopics and is never filled."
+  },
+  "identity": {
+    "firstName": {
+      "value": "Maulana",
+      "source": "derived",
+      "scope": "all"
+    },
+    "lastName": {
+      "value": "Aprizqy Sumaryanto",
+      "source": "derived",
+      "scope": "all"
+    },
+    "fullName": {
+      "value": "Maulana Aprizqy Sumaryanto",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "email": {
+      "value": "aprizqymaulana@gmail.com",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "phone": {
+      "value": "+62 813-8379-4949",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "location": {
+      "value": "Bekasi, Indonesia (Jabodetabek)",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "city": {
+      "value": "Bekasi",
+      "source": "derived",
+      "scope": "all"
+    },
+    "country": {
+      "value": "Indonesia",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "links": {
+      "site": {
+        "value": "https://me.aprizqyhub.my.id",
+        "source": "confirmed",
+        "scope": "all"
+      },
+      "github": {
+        "value": "https://github.com/zlnew",
+        "source": "confirmed",
+        "scope": "all"
+      },
+      "linkedin": {
+        "value": "https://linkedin.com/in/aprizqy",
+        "source": "confirmed",
+        "scope": "all"
+      },
+      "whatsapp": {
+        "value": "https://wa.me/6281383794949",
+        "source": "derived",
+        "scope": "all"
+      }
+    }
+  },
+  "work": {
+    "authorizedIn": {
+      "value": "Indonesia",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "citizenship": {
+      "value": "Indonesian",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "relocate": {
+      "value": false,
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "noticePeriod": {
+      "value": "1 month",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "startAvailability": {
+      "value": "one month from offer acceptance",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "applicationsLanguage": {
+      "value": "English",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "languages": {
+      "value": [
+        "English"
+      ],
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "resumePath": {
+      "value": "../repo/neo-portfolio/public/resume.pdf",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "resumePages": {
+      "value": 1,
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "accounts": {
+      "value": [
+        "LinkedIn",
+        "Glints",
+        "Kalibrr",
+        "Dealls"
+      ],
+      "source": "confirmed",
+      "scope": "all"
+    }
+  },
+  "compensation": {
+    "currency": {
+      "value": "IDR",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "floor": {
+      "value": 12000000,
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "target": {
+      "value": 14000000,
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "targetMin": {
+      "value": 12000000,
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "targetMax": {
+      "value": 14000000,
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "policy": {
+      "value": "Negotiable",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "benefits": {
+      "value": [
+        "BPJS Kesehatan",
+        "BPJS Ketenagakerjaan",
+        "THR",
+        "at least 12 days leave",
+        "overtime per regulation"
+      ],
+      "source": "confirmed",
+      "scope": "all"
+    }
+  },
+  "titles": {
+    "level": {
+      "value": "mid-level engineer, senior-shaped evidence in payments",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "yearsExperience": {
+      "value": 3,
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "trackOrder": {
+      "value": {
+        "backend": 3,
+        "platform": 2,
+        "product-engineer": 2,
+        "full-stack": 1
+      },
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "accepted": {
+      "value": [
+        "Backend Engineer",
+        "Platform Engineer",
+        "Product Engineer",
+        "Full-Stack Engineer"
+      ],
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "bareSoftwareEngineer": {
+      "value": "Full-Stack (+1) only when the JD names Go/Python/backend work",
+      "source": "confirmed",
+      "scope": "all"
+    }
+  },
+  "employment": {
+    "employers": {
+      "value": [
+        "PT Akasanet Bumi Nusantara (YODU)",
+        "Dua Naga Corporation",
+        "PT Teknologi Perdagangan Lilasia",
+        "PT Baracipta Esa Engineering",
+        "STMIK Mercusuar"
+      ],
+      "source": "derived",
+      "scope": "all"
+    },
+    "roles": {
+      "value": [
+        {
+          "company": "PT Akasanet Bumi Nusantara (YODU)",
+          "role": "Full Stack Engineer",
+          "start": "2026-05",
+          "end": null,
+          "current": true,
+          "stack": [
+            "Go",
+            "Python",
+            "MongoDB",
+            "Vue.js"
+          ],
+          "bullets": [
+            "Develop the core transfer engine and payment rails that move funds between accounts, banks, and e-wallets.",
+            "Deliver transfer capabilities for the B2B Open API, so partners can initiate payments from their own systems.",
+            "Improve merchant onboarding and add virtual account support to the merchant product.",
+            "Improve the client and merchant settlement lifecycle, from transaction capture through payout."
+          ]
+        },
+        {
+          "company": "Dua Naga Corporation",
+          "role": "Full Stack Engineer",
+          "start": "2024-12",
+          "end": "2025-12",
+          "current": false,
+          "stack": [
+            "Laravel",
+            "Vue.js",
+            "PostgreSQL"
+          ],
+          "bullets": [
+            "Built Dragon Bridge, a seven-module ERP covering production, procurement, warehouse, finance, R&D, QC, and sales, giving operations one shared view of the business.",
+            "Improved purchasing throughput by replacing manual requisition and purchase-order tracking with a single workflow.",
+            "Improved stock accuracy by recording inbound, outbound, and adjustment movements in one system.",
+            "Designed the shared Vue component library and frontend architecture used by every module."
+          ]
+        },
+        {
+          "company": "PT Teknologi Perdagangan Lilasia",
+          "role": "Full Stack Engineer",
+          "start": "2024-01",
+          "end": "2024-11",
+          "current": false,
+          "stack": [
+            "Laravel",
+            "Vue.js",
+            "PostgreSQL"
+          ],
+          "bullets": [
+            "Built and maintained the Lilasia e-commerce platform, including PostgreSQL query tuning.",
+            "Extracted a reusable Vue UI library used across three concurrent projects.",
+            "Added a WordPress blog integrated with the main platform for content marketing."
+          ]
+        },
+        {
+          "company": "PT Baracipta Esa Engineering",
+          "role": "Full Stack Engineer Intern",
+          "start": "2022-08",
+          "end": "2022-12",
+          "current": false,
+          "stack": [
+            "PHP",
+            "jQuery",
+            "MySQL"
+          ],
+          "bullets": [
+            "Built frontend and REST API features for a marketplace platform.",
+            "Delivered assigned features across a five-month internship on a Git-based team."
+          ]
+        },
+        {
+          "company": "STMIK Mercusuar",
+          "role": "Full Stack Engineer (Freelance)",
+          "start": "2021-04",
+          "end": "2022-07",
+          "current": false,
+          "stack": [
+            "Laravel",
+            "Vue.js",
+            "MySQL"
+          ],
+          "bullets": [
+            "Built several internal systems: thesis management, admissions, student ID digitization, and financial administration.",
+            "Owned each project from system design through production deployment."
+          ]
+        }
+      ],
+      "source": "derived",
+      "scope": "all"
+    }
+  },
+  "education": {
+    "value": [
+      {
+        "degree": "B.Sc. Software Engineering",
+        "school": "University of Bina Sarana Informatika",
+        "start": "2019",
+        "end": "2023",
+        "gpa": "3.97 / 4.00",
+        "note": "Graduated with distinction while working as a freelance developer."
+      }
+    ],
+    "source": "derived",
+    "scope": "all"
+  },
+  "skills": {
+    "value": [
+      {
+        "title": "Languages",
+        "items": [
+          "Go (Golang)",
+          "Python",
+          "TypeScript",
+          "JavaScript",
+          "PHP"
+        ]
+      },
+      {
+        "title": "Frameworks & Libraries",
+        "items": [
+          "Laravel",
+          "Vue.js",
+          "React",
+          "Tailwind CSS",
+          "Pinia"
+        ]
+      },
+      {
+        "title": "Data & Infrastructure",
+        "items": [
+          "PostgreSQL",
+          "MongoDB",
+          "MySQL",
+          "Redis",
+          "Docker",
+          "Linux",
+          "Nginx",
+          "Cloudflare Tunnel",
+          "Git"
+        ]
+      },
+      {
+        "title": "Protocols & APIs",
+        "items": [
+          "REST",
+          "OpenAPI",
+          "WebSocket",
+          "MCP"
+        ]
+      },
+      {
+        "title": "Domain & Practices",
+        "items": [
+          "Payment systems",
+          "CI/CD",
+          "Monitoring & telemetry",
+          "Git-based deployments"
+        ]
+      }
+    ],
+    "source": "derived",
+    "scope": "all"
+  },
+  "blockedTopics": [
+    {
+      "key": "expectedSalaryNumeric",
+      "reason": "Only a walk-away floor (12000000) and a Negotiable policy are confirmed; a single expected figure is not stated."
+    },
+    {
+      "key": "currentSalary",
+      "reason": "Not stated in answers.md or career.json."
+    },
+    {
+      "key": "salaryHistory",
+      "reason": "Not stated in answers.md or career.json."
+    },
+    {
+      "key": "birthDate",
+      "reason": "Personal data not stated in either source."
+    },
+    {
+      "key": "birthPlace",
+      "reason": "Personal data not stated in either source."
+    },
+    {
+      "key": "age",
+      "reason": "Not stated in either source; never derive it from other data."
+    },
+    {
+      "key": "gender",
+      "reason": "EEO/personal question with no answer in either source."
+    },
+    {
+      "key": "race",
+      "reason": "EEO question with no answer in either source."
+    },
+    {
+      "key": "ethnicity",
+      "reason": "EEO question with no answer in either source."
+    },
+    {
+      "key": "religion",
+      "reason": "EEO/personal question with no answer in either source."
+    },
+    {
+      "key": "maritalStatus",
+      "reason": "EEO/personal question with no answer in either source."
+    },
+    {
+      "key": "disabilityStatus",
+      "reason": "EEO question with no answer in either source."
+    },
+    {
+      "key": "veteranStatus",
+      "reason": "EEO question with no answer in either source."
+    },
+    {
+      "key": "photo",
+      "reason": "No photo file is confirmed; only the one-page resume is."
+    },
+    {
+      "key": "nationalId",
+      "reason": "KTP/NPWP numbers are not stated in either source."
+    },
+    {
+      "key": "bankAccount",
+      "reason": "Payroll details are not stated in either source."
+    },
+    {
+      "key": "references",
+      "reason": "No referees are named in either source."
+    },
+    {
+      "key": "timezoneOverlap",
+      "reason": "answers.md lists timezone overlap as UNKNOWN; confirm before answering."
+    },
+    {
+      "key": "willingToTravel",
+      "reason": "Not stated in either source."
+    },
+    {
+      "key": "criminalRecord",
+      "reason": "Not stated in either source."
+    },
+    {
+      "key": "securityClearance",
+      "reason": "Not stated in either source."
+    }
+  ]
+}
