@@ -10,10 +10,12 @@
  *   prepare(page) / submit(page)  optional browser steps
  */
 import generic from './generic.mjs';
+import greenhouse from './greenhouse.mjs';
+import lever from './lever.mjs';
 import workable from './workable.mjs';
 
 /** Ordered: most specific adapter first, the label-based fallback last. */
-export const ADAPTERS = [workable, generic];
+export const ADAPTERS = [workable, greenhouse, lever, generic];
 
 const REQUIRED = { name: 'string', supportsSubmit: 'boolean', detect: 'function', buildMap: 'function' };
 const OPTIONAL = ['prepare', 'submit'];

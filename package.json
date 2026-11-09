@@ -6,6 +6,8 @@
   "scripts": {
     "login": "node scripts/login.mjs",
     "fill": "node scripts/fill.mjs",
+    "prepare": "node cli/prepare.mjs",
+    "apply": "node cli/apply.mjs",
     "test": "node --test test/*.test.mjs",
     "sweep": "node scripts/sweep.mjs",
     "board": "node scripts/board.mjs",

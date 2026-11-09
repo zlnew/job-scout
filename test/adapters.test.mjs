@@ -64,7 +64,7 @@ test('every registered adapter satisfies the adapter contract', () => {
   for (const adapter of ADAPTERS) {
     assert.doesNotThrow(() => assertAdapterContract(adapter), `${adapter.name} satisfies the contract`);
   }
-  assert.deepEqual(ADAPTERS.map((adapter) => adapter.name), ['workable', 'generic']);
+  assert.deepEqual(ADAPTERS.map((adapter) => adapter.name), ['workable', 'greenhouse', 'lever', 'generic']);
   // S1: only an adapter that understands the form may ever auto-submit.
   assert.equal(workable.supportsSubmit, true);
   assert.equal(generic.supportsSubmit, false);
