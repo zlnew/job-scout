@@ -24,10 +24,7 @@ export function chromePath() {
       }
     }
   }
-  if (candidates.length === 0) {
-    throw new Error(`no chromium binary under ${CACHE}; run: npx playwright install chromium`);
-  }
-  return candidates.sort().at(-1);
+  return candidates.sort().at(-1) ?? null;
 }
 
 /** A real X server (or ssh -X) is required for a headed browser. */
@@ -36,13 +33,39 @@ export const hasDisplay = () => Boolean(process.env.DISPLAY || process.env.WAYLA
 /** Persistent profile: logins survive between runs. Gitignored — it holds session cookies. */
 export const PROFILE = process.env.JOB_APPLY_PROFILE ?? resolve(import.meta.dirname, '..', 'profile');
 
+/**
+ * Where to get a browser from: explicit binary > explicit channel > playwright cache > system Chrome.
+ * A machine with Google Chrome installed needs no 150MB download.
+ */
+export function launchTarget({ env = process.env, findCached = chromePath } = {}) {
+  if (env.JOB_APPLY_CHROME) return { executablePath: env.JOB_APPLY_CHROME };
+  if (env.JOB_APPLY_CHANNEL) return { channel: env.JOB_APPLY_CHANNEL };
+  const cached = findCached();
+  if (cached) return { executablePath: cached };
+  return { channel: 'chrome' };
+}
+
 export async function launch({ headless = false } = {}) {
-  return chromium.launchPersistentContext(PROFILE, {
-    executablePath: chromePath(),
-    headless,
-    viewport: { width: 1280, height: 900 },
-    slowMo: headless ? 0 : 40,
-  });
+  const target = launchTarget();
+  try {
+    return await chromium.launchPersistentContext(PROFILE, {
+      ...target,
+      headless,
+      viewport: { width: 1280, height: 900 },
+      slowMo: headless ? 0 : 40,
+    });
+  } catch (error) {
+    if (!/Executable doesn't exist|no chromium|channel/i.test(error.message)) throw error;
+    throw new Error(
+      [
+        'no usable browser found.',
+        'fix with one of:',
+        '  npm i -D playwright && npx playwright install chromium   # download playwright chromium',
+        '  JOB_APPLY_CHANNEL=chromium npm run login                 # use a system chromium build',
+        '  JOB_APPLY_CHROME=/path/to/chrome npm run login           # point at a binary',
+      ].join('\n'),
+    );
+  }
 }
 
 /** Minimal `--key value` / `--key=value` / `--flag` parser. */

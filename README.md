@@ -63,6 +63,12 @@ Filters by title against the rubric, dedupes, ranks by track, writes `postings/s
 Rate limits are real: a 429 on one query is normal, rerun later rather than hammering it.
 Scoring the JD text stays with the agent.
 
+## Browser resolution
+
+Order: `JOB_APPLY_CHROME` binary → `JOB_APPLY_CHANNEL` → a cached Playwright chromium → **system
+Google Chrome**. So a machine with Chrome installed needs no 150MB download. If none is found:
+`npm i -D playwright && npx playwright install chromium`.
+
 ## Session setup
 
 If this machine has a display, log in interactively:
