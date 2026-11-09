@@ -151,7 +151,7 @@ test('screener questions land in questions and blocked, never in fields', () => 
   }
   assert.deepEqual(
     map.blocked.map((entry) => entry.key).sort(),
-    ['answers.expectedSalaryNumeric', 'answers.gender', 'answers.maritalStatus', 'answers.religion'],
+    ['answers.expectedSalaryNumeric', 'answers.gender', 'answers.jobVacancy', 'answers.maritalStatus', 'answers.religion'],
   );
 
   // S2: an answer the profile does not state never becomes a value.
