@@ -40,9 +40,13 @@ test('blockedTopics keys resolve to blocked, never to a value', () => {
   assert.equal(birthDate.value, '2002-04-03');
 
   const gender = resolveQuestion('Gender', PROFILE);
-  assert.equal(gender.status, 'blocked');
-  assert.equal(gender.key, 'answers.gender');
-  assert.match(gender.reason, /no answer/i);
+  assert.equal(gender.status, 'answer', 'a confirmed EEO answer resolves to a value');
+  assert.equal(gender.value, 'Male');
+
+  const disability = resolveQuestion('Disability Status', PROFILE);
+  assert.equal(disability.status, 'blocked');
+  assert.equal(disability.key, 'answers.disabilityStatus');
+  assert.match(disability.reason, /no answer/i);
 
   const expected = resolveQuestion('Expected monthly salary', PROFILE);
   assert.equal(expected.status, 'blocked');
@@ -117,7 +121,7 @@ test('every registry key exists in the profile or is a blocked topic', () => {
 });
 
 test('the generic adapter routes recognised questions through the registry', () => {
-  const map = generic.buildMap(PROFILE, { controls: ['Notice Period', 'Birth Date', 'Gender'] });
+  const map = generic.buildMap(PROFILE, { controls: ['Notice Period', 'Birth Date', 'Disability Status'] });
 
   assert.deepEqual(
     map.fields,
@@ -126,5 +130,5 @@ test('the generic adapter routes recognised questions through the registry', () 
   );
   assert.deepEqual(map.blocked, [], 'the generic adapter never auto-submits, so blocked stays implicit');
   assert.deepEqual(map.questions.map((question) => question.key), ['unrecognisedControls']);
-  assert.match(map.questions[0].reason, /Gender .*gender/, 'the blocked question is named in the reason');
+  assert.match(map.questions[0].reason, /Disability Status .*disabilityStatus/, 'the blocked question is named in the reason');
 });

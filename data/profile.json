@@ -78,7 +78,7 @@
       "scope": "all"
     },
     "citizenship": {
-      "value": "Indonesian",
+      "value": "Indonesia",
       "source": "confirmed",
       "scope": "all"
     },
@@ -401,24 +401,12 @@
       "reason": "Not stated in either source; never derive it from other data."
     },
     {
-      "key": "answers.gender",
-      "reason": "EEO/personal question with no answer in either source."
-    },
-    {
       "key": "answers.race",
       "reason": "EEO question with no answer in either source."
     },
     {
       "key": "answers.ethnicity",
       "reason": "EEO question with no answer in either source."
-    },
-    {
-      "key": "answers.religion",
-      "reason": "EEO/personal question with no answer in either source."
-    },
-    {
-      "key": "answers.maritalStatus",
-      "reason": "EEO/personal question with no answer in either source."
     },
     {
       "key": "answers.disabilityStatus",
@@ -488,6 +476,21 @@
     },
     "currentSalary": {
       "value": 7700000,
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "gender": {
+      "value": "Male",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "religion": {
+      "value": "Islam",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "maritalStatus": {
+      "value": "Single",
       "source": "confirmed",
       "scope": "all"
     }

@@ -24,11 +24,6 @@ drops out of the list.
 - why blocked: Not stated in either source; never derive it from other data.
 - answer:
 
-## Gender
-- profile key: `answers.gender`
-- why blocked: EEO/personal question with no answer in either source.
-- answer:
-
 ## Race
 - profile key: `answers.race`
 - why blocked: EEO question with no answer in either source.
@@ -37,16 +32,6 @@ drops out of the list.
 ## Ethnicity
 - profile key: `answers.ethnicity`
 - why blocked: EEO question with no answer in either source.
-- answer:
-
-## Religion
-- profile key: `answers.religion`
-- why blocked: EEO/personal question with no answer in either source.
-- answer:
-
-## Marital Status
-- profile key: `answers.maritalStatus`
-- why blocked: EEO/personal question with no answer in either source.
 - answer:
 
 ## Disability Status
