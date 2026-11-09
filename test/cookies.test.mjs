@@ -115,3 +115,16 @@ test('CLI reports an unreadable path without launching a browser', () => {
   assert.equal(status, 2);
   assert.match(stderr, /cannot read/);
 });
+
+test('export keeps only the requested domain and its subdomains', async () => {
+  const { selectCookies } = await import('./../scripts/export-cookies.mjs');
+  const all = [
+    { domain: '.linkedin.com', name: 'li_at', value: 'x' },
+    { domain: 'www.linkedin.com', name: 'JSESSIONID', value: 'y' },
+    { domain: '.licdn.com', name: 'nope', value: 'z' },
+    { domain: '.google.com', name: 'nope2', value: 'w' },
+  ];
+  assert.deepEqual(selectCookies(all, 'linkedin.com').map((c) => c.name), ['li_at', 'JSESSIONID']);
+  assert.deepEqual(selectCookies(all, '.LinkedIn.com').map((c) => c.name), ['li_at', 'JSESSIONID']);
+  assert.equal(selectCookies(all).length, 4, 'no domain filter keeps everything');
+});

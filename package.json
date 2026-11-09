@@ -9,7 +9,9 @@
     "test": "node --test test/*.test.mjs",
     "sweep": "node scripts/sweep.mjs",
     "board": "node scripts/board.mjs",
-    "cover": "node scripts/cover.mjs"
+    "cover": "node scripts/cover.mjs",
+    "export-cookies": "node scripts/export-cookies.mjs",
+    "import-cookies": "node scripts/import-cookies.mjs"
   },
   "dependencies": {
     "playwright-core": "^1.64.0"
