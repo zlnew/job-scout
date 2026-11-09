@@ -107,7 +107,22 @@ async function locate(page, key) {
     } catch {
       continue;
     }
-    if (count > 0) return { locator: locator.first(), via, count };
+    if (count === 0) continue;
+
+    // A decoy control can share the label: intl-tel-input puts a "Change country for phone
+    // number" button ahead of the phone input, and getByLabel matches both. Always prefer a
+    // real form control so the value lands somewhere the form actually submits.
+    for (let index = 0; index < Math.min(count, 10); index += 1) {
+      const candidate = locator.nth(index);
+      try {
+        const tag = await candidate.evaluate((el) => el.tagName.toLowerCase());
+        if (tag === 'input' || tag === 'select' || tag === 'textarea') return { locator: candidate, via, count };
+      } catch {
+        // detached node; try the next candidate
+      }
+    }
+
+    return { locator: locator.first(), via: `${via} (non-control)`, count };
   }
   return null;
 }
