@@ -66,6 +66,28 @@ throw, so a double submission cannot pass `applyTransition`. `upsertRecord` merg
 identity key, and `appendEvent` appends `{ ts, action, key, ... }` lines to `data/events.jsonl`;
 `readStore`/`writeStore` own the 2-space JSON and `updated`/`applications` key order.
 
+## ATS adapters (`adapters/`)
+
+An ATS is one module plus one saved form snapshot; core never learns an ATS name. Each adapter
+exports `name`, `supportsSubmit`, `detect(url)`, `buildMap(profile, posting)` and optionally
+`prepare(page)` / `submit(page)`; `adapters/index.mjs` holds the registry (`findAdapter`), the
+generic label-based fallback, and `assertAdapterContract`, which `doctor` will also use.
+`buildMap` returns `{ fields, questions, blocked, missing }`: `fields` is what the filler can fill,
+`questions` are controls the adapter recognises but cannot answer, `blocked` is the subset matching
+a `blockedTopics` key (never answered), and `missing` names profile answers the adapter needs.
+Pass the labels you found on the page as `posting.controls` and the map narrows to them, so a
+posting that never rendered an Address field does not report a false miss.
+
+```js
+import { findAdapter } from './adapters/index.mjs';
+const adapter = findAdapter(applyUrl);            // workable | generic
+const map = adapter.buildMap(loadProfile(profilePath), posting);
+```
+
+Adding an ATS: drop `adapters/<name>.mjs` and `fixtures/ats/<name>/form.html`, register it in
+`ADAPTERS` (specific first, generic last), and extend `test/adapters.test.mjs`. Keep
+`supportsSubmit: false` unless the adapter understands every required control on that form.
+
 ## Find postings (no pasting URLs needed)
 
 ```bash
