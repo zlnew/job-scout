@@ -69,6 +69,30 @@ Order: `JOB_APPLY_CHROME` binary → `JOB_APPLY_CHANNEL` → a cached Playwright
 Google Chrome**. So a machine with Chrome installed needs no 150MB download. If none is found:
 `npm i -D playwright && npx playwright install chromium`.
 
+## Agent here, browser there (SSH tunnel + CDP)
+
+When the agent runs on a headless box but the logged-in browser lives on your laptop, attach to
+that browser instead of launching one:
+
+```bash
+# 1. laptop: a dedicated Chrome instance you keep open and log into
+google-chrome --remote-debugging-port=9222 --user-data-dir="$HOME/.job-apply-chrome"
+
+# 2. agent machine: forward the port over the tailnet, leave it running
+ssh -N -L 9222:127.0.0.1:9222 <you>@<laptop>
+
+# 3. agent machine: every script now drives the real browser
+JOB_APPLY_CDP=http://127.0.0.1:9222 npm run sweep -- --jd 8
+JOB_APPLY_CDP=http://127.0.0.1:9222 node scripts/fill.mjs --url <ats-url> --fields fields.json --submit
+```
+
+`close()` only disconnects — your browser window stays open. Log into the site **in the debugging
+instance**, not your everyday Chrome. Keep CDP bound to loopback (`-L` does that); never expose it
+to the tailnet directly, since anyone who reaches that port controls the browser.
+
+Zero-build alternative: log in on the laptop, export cookies, `node scripts/import-cookies.mjs`
+on this machine.
+
 ## Session setup
 
 If this machine has a display, log in interactively:

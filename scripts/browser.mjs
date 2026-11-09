@@ -45,7 +45,25 @@ export function launchTarget({ env = process.env, findCached = chromePath } = {}
   return { channel: 'chrome' };
 }
 
+/** Attach to a browser running elsewhere (e.g. your laptop, over an SSH tunnel) instead of launching one. */
+export function connectTarget({ env = process.env } = {}) {
+  return env.JOB_APPLY_CDP ? { kind: 'cdp', url: env.JOB_APPLY_CDP } : { kind: 'launch' };
+}
+
 export async function launch({ headless = false } = {}) {
+  const remote = connectTarget();
+  if (remote.kind === 'cdp') {
+    const browser = await chromium.connectOverCDP(remote.url);
+    const context = browser.contexts()[0] ?? (await browser.newContext());
+    // close() must disconnect from the user's browser, never close their window.
+    return {
+      pages: () => context.pages(),
+      newPage: () => context.newPage(),
+      addCookies: (cookies) => context.addCookies(cookies),
+      close: () => browser.close(),
+    };
+  }
+
   const target = launchTarget();
   try {
     return await chromium.launchPersistentContext(PROFILE, {

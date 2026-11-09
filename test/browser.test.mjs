@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { launchTarget } from './../scripts/browser.mjs';
+import { connectTarget, launchTarget } from './../scripts/browser.mjs';
 
 test('uses a cached playwright chromium when one exists', () => {
   assert.deepEqual(launchTarget({ env: {}, findCached: () => '/cache/chromium-1/chrome-linux64/chrome' }), {
@@ -17,4 +17,9 @@ test('explicit binary and channel overrides win over the cache', () => {
     executablePath: '/usr/bin/google-chrome',
   });
   assert.deepEqual(launchTarget({ env: { JOB_APPLY_CHANNEL: 'msedge' }, findCached: () => '/cache/chrome' }), { channel: 'msedge' });
+});
+
+test('JOB_APPLY_CDP attaches to a running browser instead of launching one', () => {
+  assert.deepEqual(connectTarget({ env: { JOB_APPLY_CDP: 'http://127.0.0.1:9222' } }), { kind: 'cdp', url: 'http://127.0.0.1:9222' });
+  assert.deepEqual(connectTarget({ env: {} }), { kind: 'launch' });
 });
