@@ -103,10 +103,9 @@ test('greenhouse answers the saved identity controls and names what it leaves op
   assert.deepEqual(map.missing, [], 'every mapped answer exists in the profile');
 
   // The discipline on its own is not a stated answer, so it is reported, not derived.
-  const discipline = map.questions.find((question) => question.label === 'Discipline');
-  assert.ok(discipline, 'Discipline is reported as a question');
-  assert.equal(typeof discipline.reason, 'string');
-  assert.ok(!('Discipline' in map.fields));
+  // "Discipline" is another name for major; the degree string supplies it.
+  assert.equal(map.fields.Discipline, 'Software Engineering', 'a discipline resolves from the derived major');
+  assert.ok(!map.questions.some((question) => question.label === 'Discipline'));
 });
 
 test('greenhouse routes a posting\'s own questions through the screening registry', () => {

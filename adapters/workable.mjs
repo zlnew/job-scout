@@ -47,14 +47,17 @@ const CONTROLS = [
   { label: 'Marital Status', ask: 'maritalStatus' },
   { label: 'Current monthly salary', ask: 'currentSalary', match: ['Current monthly salary in IDR'] },
   { label: 'Expected monthly salary', ask: 'expectedSalaryNumeric', match: ['Expected monthly salary In IDR'] },
-  {
-    label: 'Major of Study',
-    ask: 'majorOfStudy',
-    reason: 'the profile records one degree string (B.Sc. Software Engineering); the major on its own is not a stated answer',
-  },
+  // Derived: career.json's degree string names the major ("B.Sc. Software Engineering").
+  { label: 'Major of Study', ask: 'answers.majorOfStudy' },
   {
     label: 'Job Vacancy to Apply',
     ask: 'jobVacancy',
+    // Derived from the posting itself at fill time, never from the profile: the
+    // record names the role it hires for, and a posting without one falls back
+    // to the documented default. The blockedTopics entry stays because a stored
+    // answer never existed.
+    derive: (profile, posting) =>
+      (typeof posting.role === 'string' && posting.role.trim() !== '' ? posting.role : 'Fullstack Engineer'),
     reason: 'the posting is not mapped to a Workable vacancy id yet, and guessing one would misroute the application',
   },
   {
@@ -65,8 +68,12 @@ const CONTROLS = [
   },
   {
     label: 'By submitting this form',
-    ask: 'dataProcessingConsent',
+    ask: 'answers.dataProcessingConsent',
     match: ['By submitting this form', 'Personal Data'],
+    // A consent checkbox is answerable, not a screening question: the registry
+    // keys on label wording that Workable's consent sentence never uses. Tick it
+    // only on a confirmed true; false or absent stays a question for the human.
+    derive: (profile) => (readAnswer(profile, 'answers.dataProcessingConsent') === true ? true : undefined),
     reason: 'a data-processing consent the applicant must give personally, not the agent',
   },
 ];
@@ -119,6 +126,17 @@ export function buildMap(profile, posting = {}) {
       }
       fields[entry.label] = entry.file ? { __file: value } : value;
       continue;
+    }
+
+    // A derived value needs no registry lookup: it comes from the posting or a
+    // confirmed checkbox answer. Anything `derive` cannot supply falls through
+    // to the registry below, which reports it instead of inventing a value.
+    if (entry.derive) {
+      const derived = entry.derive(profile, posting);
+      if (derived !== undefined) {
+        fields[entry.label] = derived;
+        continue;
+      }
     }
 
     // Every recognised question is classified by the shared registry (S2/L4):

@@ -80,6 +80,7 @@ export const SCREENING = [
   { pattern: /\bsecurity\s+clearance\b|\bclearance\b/i, key: 'answers.securityClearance', label: 'Security Clearance' },
   { pattern: /family\s+ties|relatives?\s+working/i, key: 'answers.familyTies', label: 'Family ties to employees' },
   { pattern: /data\s*processing|privacy\s+(consent|notice|policy)|consent\s+to\s+process/i, key: 'answers.dataProcessingConsent', label: 'Data processing consent' },
+  { pattern: /\bmajor\b|field\s+of\s+study|\bdiscipline\b/i, key: 'answers.majorOfStudy', label: 'Major of Study' },
   { pattern: /job\s+vacancy\s+to\s+apply|position\s+(applied|you\s+are\s+applying)|which\s+role/i, key: 'answers.jobVacancy', label: 'Job vacancy to apply' },
 ];
 

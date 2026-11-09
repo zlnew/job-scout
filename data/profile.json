@@ -493,6 +493,11 @@
       "value": "Single",
       "source": "confirmed",
       "scope": "all"
+    },
+    "majorOfStudy": {
+      "value": "Software Engineering",
+      "source": "derived",
+      "scope": "all"
     }
   }
 }
