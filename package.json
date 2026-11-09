@@ -1,0 +1,17 @@
+{
+  "name": "job-apply",
+  "private": true,
+  "type": "module",
+  "description": "Human-in-the-loop job application harness: persistent browser profile, form prefiller, answer bank, application log.",
+  "scripts": {
+    "login": "node scripts/login.mjs",
+    "fill": "node scripts/fill.mjs",
+    "test": "node --test test/*.test.mjs",
+    "sweep": "node scripts/sweep.mjs",
+    "board": "node scripts/board.mjs",
+    "cover": "node scripts/cover.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "^1.64.0"
+  }
+}

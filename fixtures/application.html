@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture ATS form</title>
+  </head>
+  <body>
+    <h1>Apply for Backend Engineer</h1>
+    <form id="app" onsubmit="event.preventDefault(); document.body.dataset.submitted = '1';">
+      <label for="full">Full name</label>
+      <input id="full" type="text" />
+
+      <label for="mail">Email</label>
+      <input id="mail" type="email" />
+
+      <input type="tel" placeholder="Phone number" />
+
+      <label for="auth">Work authorization</label>
+      <select id="auth">
+        <option value="">Select…</option>
+        <option value="yes">Yes, Indonesian citizen</option>
+        <option value="no">No</option>
+      </select>
+
+      <label for="reloc">Willing to relocate</label>
+      <input id="reloc" type="checkbox" />
+
+      <label for="cv">Resume/CV</label>
+      <input id="cv" type="file" />
+
+      <label for="cl">Cover letter</label>
+      <textarea id="cl" name="cover_letter"></textarea>
+
+      <button type="submit">Submit application</button>
+    </form>
+  </body>
+</html>

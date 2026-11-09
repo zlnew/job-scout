@@ -1,0 +1,8 @@
+Backend Engineer - Payments
+
+We are hiring a backend engineer to work on our payment rails and transfer engine, moving funds
+between accounts and e-wallets. You will build Go services and partner-facing APIs, own settlement
+correctness, and work with PostgreSQL and Redis.
+
+Required: Kubernetes in production, Kafka or another message bus, gRPC between services.
+Nice to have: Terraform, AWS.

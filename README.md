@@ -1,0 +1,152 @@
+# job-apply — human-in-the-loop application harness
+
+Fills job application forms in a real browser, screenshots the result, and **never clicks
+submit**. A human reviews and sends. Scoring and answer rules live in `answers.md`; the
+running record lives in `job-applications.md`.
+
+## First run
+
+```bash
+cd job-apply
+npm install                     # playwright-core only; browsers are already cached
+npm test                        # one deterministic test against fixtures/application.html
+node scripts/login.mjs https://www.linkedin.com/login   # log in by hand, close the window
+```
+
+`scripts/login.mjs <url>` opens the persistent profile at `./profile` (gitignored — it holds
+session cookies). Log in once per site; later runs reuse the session. Credentials are never
+scripted or stored by this harness.
+
+## Cover letter (reusable generator)
+
+```bash
+npm run cover -- --company "Kredivo Group" --role "Backend Engineer - Golang (SDE II)" \
+  --jd postings/4440204415.txt --angle backend \
+  --why "one researched line about this company"
+```
+
+Deterministic, not creative: it picks the 2 best-matching bullets from `career.json` (current role
+always leads), quotes the skills the JD actually shares with the resume, and carries your `--why`
+line verbatim. Angles: `backend`, `platform`, `product`, `fullstack`.
+
+- **No `--why` → exit 1, no file.** A letter cannot be written with a hole where the research goes.
+- **JD-only technology is reported as a gap**, never claimed: `gaps in the JD you cannot claim: aws, gcp`.
+- Output goes to `cover-letters/<company>-<role>.md` with a header naming the claimed bullets
+  and the banned technology. Review it before sending — the generator writes, Maul sends.
+
+## Board (persistent state)
+
+`applications.json` is the store — one record per posting (`company`, `role`, `score`, `status`,
+`channel`, `posted`, `applied`, `follow_up`, `url`, `jd`, `notes`). Statuses: `shortlisted`,
+`stretch`, `applied`, `interview`, `offer`, `rejected`.
+
+```bash
+npm run board            # regenerates board.html from applications.json
+```
+
+`board.html` is self-contained (no server, no deps, no CDN) — open it in the browser. Rows sort
+by score, statuses are counted at the top, and an `applied` row goes amber once its follow-up is
+due (applied + 7 days). `board.html` is generated and gitignored; `applications.json` is the
+committed truth. No database on purpose: at 5–10 applications/week `node:sqlite` can import this
+file later if trends are ever worth querying.
+
+## Find postings (no pasting URLs needed)
+
+```bash
+node scripts/sweep.mjs                    # Indonesia, default query set from answers.md
+node scripts/sweep.mjs --location Jakarta --pages 2
+node scripts/sweep.mjs --jd 8             # + fetch JD bodies to postings/<id>.txt
+```
+
+Uses LinkedIn's public (unauthenticated) job endpoints — search cards and JD bodies both.
+Filters by title against the rubric, dedupes, ranks by track, writes `postings/sweep-<date>.json`.
+Rate limits are real: a 429 on one query is normal, rerun later rather than hammering it.
+Scoring the JD text stays with the agent.
+
+## Session setup
+
+If this machine has a display, log in interactively:
+
+```bash
+npm run login                          # LinkedIn
+npm run login -- --site glints         # glints | kalibrr | dealls
+```
+
+**Headless server / plain SSH (no display):** a headed browser cannot run there, so `npm run login`
+exits with the options instead. Seed the session from a machine that has a browser:
+
+```bash
+# 1. laptop: log into the site, export cookies as JSON (Cookie-Editor → Export)
+# 2. copy the file over, then:
+node scripts/import-cookies.mjs /tmp/li-cookies.json --verify https://www.linkedin.com/feed
+```
+
+Accepts Cookie-Editor arrays or Playwright storage-state objects, fixes `SameSite=None` without
+`Secure`, floors float expiries, and rejects unusable entries by name. `--verify` proves the session
+actually works — it exits `1` and says `NOT logged in` when the site bounces you to a login wall.
+Note that cookies are IP/UA sensitive: an imported LinkedIn session can still hit a checkpoint, in
+which case run the harness on the machine with the browser.
+
+## Apply to one job
+
+1. Score the posting with the rubric in `answers.md`. Deal-breaker → stop here.
+2. Research the company (Glassdoor / Indeed / Jobstreet / ex-employee chatter). Record it.
+3. Copy `fields.example.json`, fill it with the real answers from `answers.md`.
+4. Prefill and review:
+
+```bash
+node scripts/fill.mjs --url <application-url> --fields fields.json --hold
+```
+
+The browser stays open with the form filled; read it, fix anything wrong, click submit
+yourself, then close the window. Without `--hold` the script fills, screenshots, and exits.
+
+Exit code `1` = `NEEDS_REVIEW`: at least one field could not be matched. The report lists
+which — fill those by hand. Never widen the field map to force a match.
+
+5. Add a row to `job-applications.md`.
+
+## Submitting automatically (`--submit`)
+
+```bash
+node scripts/fill.mjs --url <ats-url> --fields fields.json --submit
+```
+
+Guards, all enforced in code:
+
+- **Refused on `linkedin.com`** (exit 2, no browser launched) — Easy Apply automation risks the account.
+- **Refused while any field is unfilled** (exit 3, `submitBlocked` in the report) — nothing is sent half-done.
+- **Refused while a required control is still empty** (exit 3).
+- Prints `SUBMITTING: <url> — N fields filled, 0 missed` before the click, then screenshots the
+  result. Use `--hold` instead when you want to review in the browser first; `--hold` is ignored
+  when `--submit` is set.
+
+## What it will not do
+
+- Click submit unless `--submit` is passed explicitly (see above). Without it, nothing is sent.
+- Fill a field it cannot match. Unmatched → `NEEDS_REVIEW`, exit 1.
+- Guess an answer. Missing answer → ask, then record it in `answers.md`.
+- Fabricate experience or screening answers (salary, visas, years per skill).
+- Automate LinkedIn Easy Apply (ToS + account risk). Greenhouse/Lever/Ashby single forms
+  are the intended target; Workday's multi-step wizard expects manual nudges.
+- Store passwords. The profile directory is gitignored for that reason.
+
+## Files
+
+| Path | Role |
+|---|---|
+| `answers.md` | Scoring rubric, hard filters, reusable form answers, `UNKNOWN` list |
+| `applications.json` | Persistent store: every posting with score, status, dates |
+| `board.html` | Generated dashboard (gitignored, rebuilt by `npm run board`) |
+| `shortlist.md` | Dated sweep results with verdicts |
+| `scripts/cover.mjs` | Cover-letter generator (`career.json` + JD → `cover-letters/`) |
+| `scripts/board.mjs` | `applications.json` → `board.html` |
+| `job-applications.md` | Application log |
+| `scripts/sweep.mjs` | LinkedIn public sweep: candidates + JD bodies into `postings/` |
+| `scripts/login.mjs` | Persistent-profile session setup (needs a display) |
+| `scripts/import-cookies.mjs` | Seed a session from another machine's exported cookies |
+| `scripts/fill.mjs` | Prefills a form, screenshots, refuses to submit |
+| `scripts/browser.mjs` | Chromium resolution + persistent-context launcher |
+| `fields.example.json` | Field-map template |
+| `fixtures/`, `test/` | Deterministic test: fills every matched field, reports misses, never submits |
+| `screenshots/`, `profile/` | Runtime output, gitignored |
