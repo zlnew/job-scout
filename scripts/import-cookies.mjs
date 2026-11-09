@@ -71,11 +71,29 @@ if (invokedDirectly) {
     process.exit(2);
   }
 
-  let raw;
+  // "-" reads the export from stdin, so it can be piped straight from the machine with the browser.
+  let text;
   try {
-    raw = JSON.parse(readFileSync(resolve(String(file)), 'utf8'));
+    text = file === '-' ? readFileSync(0, 'utf8') : readFileSync(resolve(String(file)), 'utf8');
   } catch (error) {
     console.error(`cannot read ${file}: ${error.message}`);
+    process.exit(2);
+  }
+
+  const bytes = Buffer.byteLength(text);
+  const trimmed = text.replace(/^\uFEFF/, '').trim();
+  if (trimmed === '') {
+    console.error(`${file === '-' ? 'stdin' : file} is empty (0 bytes) - nothing was pasted or piped.`);
+    console.error('export cookies as JSON from the browser, then either scp the file or pipe it: pbpaste | ssh <server> "cd job-apply && node scripts/import-cookies.mjs - --verify <url>"');
+    process.exit(2);
+  }
+
+  let raw;
+  try {
+    raw = JSON.parse(trimmed);
+  } catch (error) {
+    console.error(`${file === '-' ? 'stdin' : file} is not valid JSON (${bytes} bytes): ${error.message}`);
+    console.error('Cookie-Editor: use Export -> JSON, not the Netscape/cookies.txt format.');
     process.exit(2);
   }
 

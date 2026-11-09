@@ -44,6 +44,52 @@ test('garbage input is reported, not silently accepted', () => {
   assert.match(normalizeCookies({ nope: true }).rejected[0].reason, /expected a JSON array/);
 });
 
+test('CLI says plainly when nothing was pasted', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'cookies-'));
+  const file = join(dir, 'empty.json');
+  writeFileSync(file, '');
+  let status = 0;
+  let stderr = '';
+  try {
+    execFileSync(process.execPath, [join(ROOT, 'scripts/import-cookies.mjs'), file], { cwd: ROOT, stdio: 'pipe' });
+  } catch (error) {
+    status = error.status ?? 1;
+    stderr = String(error.stderr ?? '');
+  }
+  assert.equal(status, 2);
+  assert.match(stderr, /is empty \(0 bytes\)/);
+});
+
+test('CLI rejects non-JSON with the byte count and the format hint', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'cookies-'));
+  const file = join(dir, 'bad.json');
+  writeFileSync(file, '# Netscape HTTP Cookie File\n');
+  let status = 0;
+  let stderr = '';
+  try {
+    execFileSync(process.execPath, [join(ROOT, 'scripts/import-cookies.mjs'), file], { cwd: ROOT, stdio: 'pipe' });
+  } catch (error) {
+    status = error.status ?? 1;
+    stderr = String(error.stderr ?? '');
+  }
+  assert.equal(status, 2);
+  assert.match(stderr, /not valid JSON \(\d+ bytes\)/);
+  assert.match(stderr, /Netscape/);
+});
+
+test('CLI reads a cookie export from stdin', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'cookies-'));
+  const env = { ...process.env, JOB_APPLY_PROFILE: mkdtempSync(join(tmpdir(), 'profile-')) };
+  const result = execFileSync(process.execPath, [join(ROOT, 'scripts/import-cookies.mjs'), '-'], {
+    cwd: ROOT,
+    stdio: 'pipe',
+    encoding: 'utf8',
+    env,
+    input: JSON.stringify([{ domain: '.example.com', name: 'a', value: '1', path: '/', secure: true }]),
+  });
+  assert.match(result, /imported 1 cookies/);
+});
+
 test('CLI refuses a cookie file with nothing usable', () => {
   const dir = mkdtempSync(join(tmpdir(), 'cookies-'));
   const file = join(dir, 'empty.json');
