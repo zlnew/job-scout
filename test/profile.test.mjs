@@ -39,7 +39,7 @@ test('every answer leaf carries a valid source and none is assumed', () => {
 
 test('blockedTopics names the numeric salary and EEO questions with no provenance', () => {
   const blocked = new Set(profile.blockedTopics.map((entry) => entry.key));
-  for (const key of ['expectedSalaryNumeric', 'currentSalary', 'gender', 'religion', 'maritalStatus', 'disabilityStatus']) {
+  for (const key of ['answers.expectedSalaryNumeric', 'answers.salaryHistory', 'answers.gender', 'answers.religion', 'answers.maritalStatus', 'answers.disabilityStatus']) {
     assert.ok(blocked.has(key), `${key} is blocked`);
   }
   for (const entry of profile.blockedTopics) {

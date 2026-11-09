@@ -5,7 +5,7 @@
       "repo/neo-portfolio/content/career.json"
     ],
     "generatedAt": "2026-11-09",
-    "note": "Every answer is confirmed by Maul in answers.md or derived from career.json. Nothing is assumed: a plausible screening question that neither source answers is listed in blockedTopics and is never filled."
+    "note": "Every answer is confirmed by Maul in answers.md or derived from career.json. Nothing is assumed: a plausible screening question that neither source answers is listed in blockedTopics and is never filled. Screening answers confirmed by Maul on 2026-11-09 live under \"answers\"; every value keeps provenance."
   },
   "identity": {
     "firstName": {
@@ -389,88 +389,107 @@
   },
   "blockedTopics": [
     {
-      "key": "expectedSalaryNumeric",
+      "key": "answers.expectedSalaryNumeric",
       "reason": "Only a walk-away floor (12000000) and a Negotiable policy are confirmed; a single expected figure is not stated."
     },
     {
-      "key": "currentSalary",
+      "key": "answers.salaryHistory",
       "reason": "Not stated in answers.md or career.json."
     },
     {
-      "key": "salaryHistory",
-      "reason": "Not stated in answers.md or career.json."
-    },
-    {
-      "key": "birthDate",
-      "reason": "Personal data not stated in either source."
-    },
-    {
-      "key": "birthPlace",
-      "reason": "Personal data not stated in either source."
-    },
-    {
-      "key": "age",
+      "key": "answers.age",
       "reason": "Not stated in either source; never derive it from other data."
     },
     {
-      "key": "gender",
+      "key": "answers.gender",
       "reason": "EEO/personal question with no answer in either source."
     },
     {
-      "key": "race",
+      "key": "answers.race",
       "reason": "EEO question with no answer in either source."
     },
     {
-      "key": "ethnicity",
+      "key": "answers.ethnicity",
       "reason": "EEO question with no answer in either source."
     },
     {
-      "key": "religion",
+      "key": "answers.religion",
       "reason": "EEO/personal question with no answer in either source."
     },
     {
-      "key": "maritalStatus",
+      "key": "answers.maritalStatus",
       "reason": "EEO/personal question with no answer in either source."
     },
     {
-      "key": "disabilityStatus",
+      "key": "answers.disabilityStatus",
       "reason": "EEO question with no answer in either source."
     },
     {
-      "key": "veteranStatus",
+      "key": "answers.veteranStatus",
       "reason": "EEO question with no answer in either source."
     },
     {
-      "key": "photo",
+      "key": "answers.photo",
       "reason": "No photo file is confirmed; only the one-page resume is."
     },
     {
-      "key": "nationalId",
+      "key": "answers.nationalId",
       "reason": "KTP/NPWP numbers are not stated in either source."
     },
     {
-      "key": "bankAccount",
+      "key": "answers.bankAccount",
       "reason": "Payroll details are not stated in either source."
     },
     {
-      "key": "references",
+      "key": "answers.references",
       "reason": "No referees are named in either source."
     },
     {
-      "key": "timezoneOverlap",
+      "key": "answers.timezoneOverlap",
       "reason": "answers.md lists timezone overlap as UNKNOWN; confirm before answering."
     },
     {
-      "key": "willingToTravel",
+      "key": "answers.willingToTravel",
       "reason": "Not stated in either source."
     },
     {
-      "key": "criminalRecord",
+      "key": "answers.criminalRecord",
       "reason": "Not stated in either source."
     },
     {
-      "key": "securityClearance",
+      "key": "answers.securityClearance",
       "reason": "Not stated in either source."
+    },
+    {
+      "key": "answers.jobVacancy",
+      "reason": "Filled from the posting's own role name at fill time; falls back to 'Fullstack Engineer'. Not a stored value, so no provenance to fake."
     }
-  ]
+  ],
+  "answers": {
+    "birthPlace": {
+      "value": "Magelang",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "birthDate": {
+      "value": "2002-04-03",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "familyTies": {
+      "value": "None",
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "dataProcessingConsent": {
+      "value": true,
+      "source": "confirmed",
+      "scope": "all"
+    },
+    "currentSalary": {
+      "value": 7700000,
+      "source": "confirmed",
+      "scope": "all"
+    }
+  }
 }

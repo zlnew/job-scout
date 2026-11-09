@@ -6,6 +6,7 @@
  * S2 rule — an answer exists only with `confirmed` or `derived` provenance —
  * lives in exactly one place instead of being re-implemented per adapter.
  */
+import { resolveQuestion } from '../core/screening.mjs';
 
 const USABLE_SOURCES = new Set(['confirmed', 'derived']);
 
@@ -91,11 +92,26 @@ export function buildMap(profile, posting = {}) {
 
   if (posting.coverLetter && present('Cover letter')) fields['Cover letter'] = posting.coverLetter;
 
+  // Recognised screening questions are classified by the same registry Workable
+  // uses. An answer fills; anything blocked stays unanswered and is named in the
+  // catch-all question below, because this adapter never auto-submits.
+  const unanswered = [];
+  for (const label of posting.controls ?? []) {
+    if (fields[label] !== undefined) continue;
+    const result = resolveQuestion(String(label), profile);
+    if (result.status === 'answer') {
+      fields[label] = result.value;
+      continue;
+    }
+    if (result.status === 'blocked') unanswered.push(`${label} [${result.key}] (${result.reason})`);
+  }
+
   questions.push({
     label: 'any control this adapter did not fill',
     key: 'unrecognisedControls',
     reason:
-      'the generic adapter matches standard labels only; a human must review every unfilled control before this form is submitted',
+      'the generic adapter matches standard labels only; a human must review every unfilled control before this form is submitted' +
+      (unanswered.length > 0 ? `; blocked by screening: ${unanswered.join('; ')}` : ''),
   });
 
   // A generic form never auto-submits, so blocked questions stay implicit: the

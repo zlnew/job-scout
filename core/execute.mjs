@@ -7,6 +7,12 @@ import { resolve } from 'node:path';
 
 const CONSENT_ACCEPT = /^(accept all|accept|agree|allow all|got it|i understand|terima|setuju|ok)/i;
 
+// A normal control fails in seconds; a 30s timeout per field turned one bad map
+// into a multi-minute hang. Comboboxes need their own, longer option wait.
+const FILL_TIMEOUT = 5_000;
+const OPTION_TIMEOUT = 8_000;
+const OPTION_SELECTOR = '[role="option"]:visible, [role="listbox"] li:visible, ul[role="listbox"] > *:visible';
+
 const escapeAttr = (value) => String(value).replaceAll('"', '\\"');
 
 /** Cookie walls intercept clicks; accept one if it is blocking the way. Failures are ignored. */
@@ -128,6 +134,62 @@ async function locate(page, key) {
 }
 
 /**
+ * Readonly comboboxes (React select widgets on Workable) ignore `fill()`:
+ * they need a click, an option click, and a check that the value moved. Keep
+ * the state reader tiny so the verification uses the same fields the widget does.
+ */
+const comboState = (locator) =>
+  locator.evaluate((el) => ({
+    value: String(el.value ?? ''),
+    active: el.getAttribute('aria-activedescendant') ?? '',
+  }));
+
+async function isCombobox(locator) {
+  try {
+    return await locator.evaluate((el) => {
+      if (el.readOnly === true && el.getAttribute('role') === 'combobox') return true;
+      if (el.closest('[role="combobox"]')) return true;
+      // Last resort: the library wrapper carries the widget name in its class.
+      return Boolean(el.closest('[class*="select" i]'));
+    });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Open a combobox and click the option that best matches `value`: exact text,
+ * then case-insensitive, then substring. Throws when no option matches so the
+ * caller reports the field instead of leaving the dropdown half-set.
+ */
+async function fillCombobox(page, locator, value) {
+  const before = await comboState(locator);
+  const wanted = String(value).trim();
+
+  await locator.click({ timeout: FILL_TIMEOUT });
+  const options = page.locator(OPTION_SELECTOR);
+  // Only the opened list is visible; a page-wide selector would otherwise pick a
+  // hidden option from another combobox and time out waiting for it.
+  await options.first().waitFor({ state: 'visible', timeout: OPTION_TIMEOUT });
+
+  const texts = (await options.allInnerTexts()).map((text) => text.replace(/\s+/g, ' ').trim());
+  const find = (matches) => texts.findIndex(matches);
+  let index = find((text) => text === wanted);
+  if (index < 0) index = find((text) => text.toLowerCase() === wanted.toLowerCase());
+  if (index < 0) index = find((text) => text.toLowerCase().includes(wanted.toLowerCase()));
+  if (index < 0) throw new Error(`no matching option: "${wanted}"`);
+
+  await options.nth(index).click({ timeout: FILL_TIMEOUT });
+  // React applies the selection after the click handler returns, not before.
+  await page.waitForTimeout(150);
+
+  const after = await comboState(locator);
+  if (after.value === before.value && after.active === before.active) {
+    throw new Error(`combobox value did not change after selecting "${wanted}"`);
+  }
+}
+
+/**
  * Fill a form from a label/name/placeholder map. Fields written as
  * {"__file": "path"} set a file input; submit-like controls are skipped, never
  * clicked, because sending is the caller's explicit decision.
@@ -156,6 +218,7 @@ export async function fillForm(page, { fields, fieldsDir }) {
       continue;
     }
 
+    let as = meta.tag === 'select' ? 'select' : meta.type || meta.tag;
     try {
       if (meta.tag === 'select') {
         try {
@@ -168,10 +231,14 @@ export async function fillForm(page, { fields, fieldsDir }) {
       } else if (meta.type === 'checkbox' || meta.type === 'radio') {
         if (value) await found.locator.check();
         else await found.locator.uncheck();
+      } else if (await isCombobox(found.locator)) {
+        // Before `fill()`: a readonly combobox times out on fill and never takes the value.
+        await fillCombobox(page, found.locator, value);
+        as = 'combobox';
       } else {
-        await found.locator.fill(String(value));
+        await found.locator.fill(String(value), { timeout: FILL_TIMEOUT });
       }
-      result.filled.push({ field: key, via: found.via, as: meta.tag === 'select' ? 'select' : meta.type || meta.tag });
+      result.filled.push({ field: key, via: found.via, as });
     } catch (error) {
       result.missed.push(key);
       result.lastError = `${key}: ${error.message.split('\n')[0]}`;

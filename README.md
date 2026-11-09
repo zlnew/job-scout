@@ -25,6 +25,14 @@ where `source` is `confirmed` (Maul said it in `answers.md`) or `derived` (compu
 `blockedTopics` and must be asked instead of guessed. `core/guard.mjs` validates the file
 (`loadProfile`) and refuses a submission with missing provenance or a duplicate identity key.
 
+## Screening questions (`core/screening.mjs`)
+
+Every recognised form question is matched by `core/screening.mjs` to a profile key before
+anything is filled. `answer` needs `confirmed` or `derived` provenance; a `blockedTopics` key,
+a missing value, or a junk source becomes a `blocked` question instead. `data/screening.md` is
+the human answer bank generated from `describe(data/profile.json)` — fill a value in the
+profile, regenerate, and the question drops off the list.
+
 ## Cover letter (reusable generator)
 
 ```bash

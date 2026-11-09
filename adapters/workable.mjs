@@ -10,6 +10,7 @@
  * answer must never be supplied, not even manually.
  */
 import { dismissConsent, findSubmit, openGate } from '../core/execute.mjs';
+import { resolveQuestion } from '../core/screening.mjs';
 import { blockedReasons, narrowToControls, readAnswer } from './generic.mjs';
 
 /** Label (and optional extra match terms) -> profile path, or the question key it needs. */
@@ -26,16 +27,17 @@ const CONTROLS = [
   { label: 'LinkedIn URL', path: 'identity.links.linkedin' },
   { label: 'Website', path: 'identity.links.site' },
   { label: 'Resume', path: 'work.resumePath', file: true },
-  // Custom questions render as readonly comboboxes: the answers below are right,
-  // but setting them needs an adapter-level option click (the fill step's job).
-  { label: 'Nationality', path: 'work.citizenship' },
-  { label: 'Notice Period', path: 'work.noticePeriod' },
-  { label: 'Work Eligibility', path: 'work.authorizedIn' },
-  { label: 'Total Working Experience', path: 'titles.yearsExperience' },
-  { label: 'University', path: 'education[0].school' },
-  { label: 'Education Degree', path: 'education[0].degree' },
-  { label: 'GPA', path: 'education[0].gpa' },
-  { label: 'Year of Graduation', path: 'education[0].end' },
+  // Screening questions render as readonly comboboxes (the fill step now clicks an
+  // option). core/screening.mjs owns the profile key; `ask` is only the identity
+  // to report when the registry does not know the label yet.
+  { label: 'Nationality', ask: 'work.citizenship' },
+  { label: 'Notice Period', ask: 'work.noticePeriod' },
+  { label: 'Work Eligibility', ask: 'work.authorizedIn' },
+  { label: 'Total Working Experience', ask: 'titles.yearsExperience' },
+  { label: 'University', ask: 'education[0].school' },
+  { label: 'Education Degree', ask: 'education[0].degree' },
+  { label: 'GPA', ask: 'education[0].gpa' },
+  { label: 'Year of Graduation', ask: 'education[0].end' },
 
   // Screener questions: recognised, but no profile answer exists for them.
   { label: 'Birth Place', ask: 'birthPlace' },
@@ -107,21 +109,35 @@ export function buildMap(profile, posting = {}) {
   for (const entry of CONTROLS) {
     if (!onForm(entry)) continue;
 
-    if (entry.ask) {
-      const reason = blockedFor.get(entry.ask) ?? entry.reason;
-      const question = { label: entry.label, key: entry.ask, reason };
-      questions.push(question);
-      // A blockedTopics match is a question nobody may answer, not just an open one.
-      if (blockedFor.has(entry.ask)) blocked.push(question);
+    // Identity and file controls are not screening questions: their value is a
+    // profile answer with provenance, read straight from the path.
+    if (entry.path) {
+      const value = readAnswer(profile, entry.path);
+      if (value === null) {
+        missing.add(entry.path);
+        continue;
+      }
+      fields[entry.label] = entry.file ? { __file: value } : value;
       continue;
     }
 
-    const value = readAnswer(profile, entry.path);
-    if (value === null) {
-      missing.add(entry.path);
+    // Every recognised question is classified by the shared registry (S2/L4):
+    // only an answer with provenance is filled, everything else is reported.
+    const result = resolveQuestion(entry.label, profile);
+    if (result.status === 'answer') {
+      fields[entry.label] = result.value;
       continue;
     }
-    fields[entry.label] = entry.file ? { __file: value } : value;
+
+    const question = {
+      label: entry.label,
+      key: result.key ?? entry.ask,
+      // A registry miss has a generic reason; the adapter knows why it is open.
+      reason: result.status === 'unknown' ? (entry.reason ?? result.reason) : result.reason,
+    };
+    questions.push(question);
+    // A blockedTopics match is a question nobody may answer, not just an open one.
+    if (blockedFor.has(question.key)) blocked.push(question);
   }
 
   // The cover letter is generated per posting, so it only exists when one was written.
