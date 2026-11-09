@@ -29,7 +29,8 @@ if (ALLOW_SUBMIT) {
 }
 
 const fieldsPath = resolve(args.fields ?? 'fields.json');
-const fields = JSON.parse(readFileSync(fieldsPath, 'utf8'));
+// --dump only inspects the form, so it must work without a field map.
+const fields = args.dump ? {} : JSON.parse(readFileSync(fieldsPath, 'utf8'));
 const fieldsDir = dirname(fieldsPath);
 
 const hostSlug = new URL(args.url).hostname.replaceAll(/[^a-z0-9]+/gi, '-') || 'local';
@@ -38,6 +39,25 @@ const shotPath = resolve(args.shot ?? `screenshots/${stamp}-${hostSlug}.png`);
 const reportPath = resolve(args.report ?? `screenshots/${stamp}-${hostSlug}.report.json`);
 
 const escapeAttr = (value) => String(value).replaceAll('"', '\\"');
+
+const CONSENT_ACCEPT = /^(accept all|accept|agree|allow all|got it|i understand|terima|setuju|ok)/i;
+
+/** Cookie walls intercept clicks; accept one if it is blocking the way. Failures are ignored. */
+async function dismissConsent(page) {
+  for (const scope of ['[data-ui="cookie-consent"]', '#onetrust-banner-sdk', '[aria-label*="ookie" i]', '[class*="cookie" i]', '[role="dialog"]']) {
+    const button = page.locator(`${scope} button`).filter({ hasText: CONSENT_ACCEPT }).first();
+    try {
+      if ((await button.count()) > 0) {
+        await button.click({ timeout: 3000 });
+        await page.waitForTimeout(300);
+        return true;
+      }
+    } catch {
+      // overlay already gone or the button is decorative
+    }
+  }
+  return false;
+}
 
 /** Find one fillable element for a key, in the order a human would recognise it. */
 async function locate(page, key) {
@@ -69,6 +89,54 @@ page.on('dialog', (dialog) => dialog.dismiss().catch(() => {}));
 try {
   await page.goto(args.url, { waitUntil: 'domcontentloaded', timeout: 45_000 });
   await page.waitForTimeout(args.headless ? 200 : 800);
+
+  await dismissConsent(page);
+
+  // Many ATS landing pages reveal the form only after a click ("Apply for this job").
+  if (args.click) {
+    const gate = page.locator('a, button, [role="button"]').filter({ hasText: new RegExp(String(args.click), 'i') }).first();
+    // React ATS pages render the control after hydration, so wait instead of sampling once.
+    try {
+      await gate.waitFor({ state: 'visible', timeout: 20_000 });
+    } catch {
+      console.error(`--click "${args.click}" matched nothing on ${args.url}`);
+      await context.close();
+      process.exit(4);
+    }
+    try {
+      await gate.click({ timeout: 15_000 });
+    } catch {
+      // A late overlay can still swallow the first click.
+      await dismissConsent(page);
+      await gate.click({ force: true, timeout: 10_000 });
+    }
+    await page.waitForLoadState('domcontentloaded', { timeout: 15_000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+    report.clicked = String(args.click);
+  }
+
+  // --dump prints the form's real controls so a field map can be generated instead of guessed.
+  if (args.dump) {
+    const controls = await page.$$eval('input, textarea, select', (nodes) =>
+      nodes.map((node) => {
+        const id = node.id;
+        const explicit = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
+        const wrapper = node.closest('label');
+        return {
+          tag: node.tagName.toLowerCase(),
+          type: node.type || '',
+          name: node.name || '',
+          placeholder: node.getAttribute('placeholder') || '',
+          ariaLabel: node.getAttribute('aria-label') || '',
+          label: (explicit?.innerText || wrapper?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 70),
+          required: node.required || node.getAttribute('aria-required') === 'true',
+        };
+      }),
+    );
+    console.log(JSON.stringify(controls, null, 2));
+    await context.close();
+    process.exit(0);
+  }
 
   for (const [key, raw] of Object.entries(fields)) {
     const value = raw && typeof raw === 'object' && '__file' in raw ? raw.__file : raw;

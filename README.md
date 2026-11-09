@@ -63,6 +63,25 @@ Filters by title against the rubric, dedupes, ranks by track, writes `postings/s
 Rate limits are real: a 429 on one query is normal, rerun later rather than hammering it.
 Scoring the JD text stays with the agent.
 
+## Resolve the apply URL (no pasted ATS links)
+
+```bash
+node scripts/resolve.mjs --id 4440204415          # prints a JSON result, writes nothing
+node scripts/resolve.mjs --url https://www.linkedin.com/jobs/view/4440204415
+node scripts/resolve.mjs --limit 5 --write        # shortlisted rows still missing applyUrl
+```
+
+Uses the logged-in persistent profile (or `JOB_APPLY_CDP`) to open the job page, then reports
+where the application really happens as `{ id, url, kind, applyUrl, reason }`:
+
+- `ats` — an employer ATS URL, either an "Apply on company site" link or the target of a popup/navigation.
+- `easy-apply` — LinkedIn's own form. **Always manual**: the harness never fills or submits it.
+- `manual` — no apply control, a timeout, or an ambiguous outcome; check the posting by hand.
+
+`--write` stores `applyUrl`, `applyKind`, and `resolvedAt` on the matching `applications.json`
+record and preserves every other field. It only clicks the apply control once to observe where it
+goes — it never fills or submits a form. Login/authwall redirects exit 4: re-import cookies.
+
 ## Browser resolution
 
 Order: `JOB_APPLY_CHROME` binary → `JOB_APPLY_CHANNEL` → a cached Playwright chromium → **system
@@ -173,6 +192,7 @@ Guards, all enforced in code:
 | `scripts/board.mjs` | `applications.json` → `board.html` |
 | `job-applications.md` | Application log |
 | `scripts/sweep.mjs` | LinkedIn public sweep: candidates + JD bodies into `postings/` |
+| `scripts/resolve.mjs` | Finds the employer ATS URL for a LinkedIn job (never applies) |
 | `scripts/login.mjs` | Persistent-profile session setup (needs a display) |
 | `scripts/import-cookies.mjs` | Seed a session from another machine's exported cookies |
 | `scripts/fill.mjs` | Prefills a form, screenshots, refuses to submit |

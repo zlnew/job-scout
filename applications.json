@@ -10,7 +10,10 @@
       "posted": "2026-10-30",
       "url": "https://www.linkedin.com/jobs/view/4440204415",
       "jd": "postings/4440204415.txt",
-      "notes": "Best match: fintech, asks 3-5 yrs, Go core. Apply first."
+      "notes": "Best match: fintech, asks 3-5 yrs, Go core. Apply first.",
+      "applyUrl": null,
+      "applyKind": "easy-apply",
+      "resolvedAt": "2026-11-09"
     },
     {
       "company": "Traveloka",
@@ -21,7 +24,10 @@
       "posted": "2026-11-06",
       "url": "https://www.linkedin.com/jobs/view/4488177589",
       "jd": "postings/4488177589.txt",
-      "notes": "Bare title accepted (backend JD). DSA-heavy loop is the real gate."
+      "notes": "Bare title accepted (backend JD). DSA-heavy loop is the real gate.",
+      "applyUrl": "https://careers.traveloka.com/jobs/mj000346-software-backend-engineer-central?sourceToken=9cb6bca99bcd8a822eea048354ee2f76",
+      "applyKind": "ats",
+      "resolvedAt": "2026-11-09"
     },
     {
       "company": "Indocyber Global Teknologi",
@@ -32,7 +38,10 @@
       "posted": "2026-11-09",
       "url": "https://www.linkedin.com/jobs/view/4487661793",
       "jd": "postings/4487661793.txt",
-      "notes": "IT vendor (-1). Asks 2-3 yrs, so likely underpaid. Decide from details."
+      "notes": "IT vendor (-1). Asks 2-3 yrs, so likely underpaid. Decide from details.",
+      "applyUrl": null,
+      "applyKind": "manual",
+      "resolvedAt": "2026-11-09"
     },
     {
       "company": "PT Tekno Gemilang (TOG Indonesia)",
@@ -42,7 +51,10 @@
       "channel": "LinkedIn",
       "posted": "2026-10-23",
       "url": "https://www.linkedin.com/jobs/view/4481637864",
-      "notes": "IT vendor pattern - fetch JD before spending time."
+      "notes": "IT vendor pattern - fetch JD before spending time.",
+      "applyUrl": null,
+      "applyKind": "manual",
+      "resolvedAt": "2026-11-09"
     },
     {
       "company": "TechConnect",
@@ -52,7 +64,10 @@
       "channel": "LinkedIn",
       "posted": "2026-10-23",
       "url": "https://www.linkedin.com/jobs/view/4482830645",
-      "notes": "Platform title passes the filter; confirm the JD isn't ML-only."
+      "notes": "Platform title passes the filter; confirm the JD isn't ML-only.",
+      "applyUrl": "https://apply.workable.com/techconnect/j/FC0E026A69",
+      "applyKind": "ats",
+      "resolvedAt": "2026-11-09"
     },
     {
       "company": "Vodjo",
