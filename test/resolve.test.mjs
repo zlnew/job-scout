@@ -111,12 +111,15 @@ test('mergeResolution updates the matching record and leaves the rest untouched'
     { company: 'B', status: 'shortlisted', url: 'https://www.linkedin.com/jobs/view/222' },
   ];
 
-  const merged = mergeResolution(records, {
-    id: '222',
-    kind: 'ats',
-    applyUrl: 'https://boards.greenhouse.io/b/jobs/9',
-    resolvedAt: '2026-11-09',
-  });
+  const merged = mergeResolution(
+    records,
+    {
+      id: '222',
+      kind: 'ats',
+      applyUrl: 'https://boards.greenhouse.io/b/jobs/9',
+    },
+    '2000-01-02',
+  );
 
   assert.equal(merged[0], records[0], 'unmatched records are not rewritten');
   assert.deepEqual(merged[0], records[0]);
@@ -126,7 +129,7 @@ test('mergeResolution updates the matching record and leaves the rest untouched'
     url: 'https://www.linkedin.com/jobs/view/222',
     applyUrl: 'https://boards.greenhouse.io/b/jobs/9',
     applyKind: 'ats',
-    resolvedAt: '2026-11-09',
+    resolvedAt: '2000-01-02',
   });
   assert.deepEqual(records[1], { company: 'B', status: 'shortlisted', url: 'https://www.linkedin.com/jobs/view/222' }, 'input is not mutated');
 });

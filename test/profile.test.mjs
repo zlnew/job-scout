@@ -37,14 +37,18 @@ test('every answer leaf carries a valid source and none is assumed', () => {
   assert.ok(count > 20, 'the profile is non-trivial');
 });
 
-test('blockedTopics names the numeric salary and EEO questions with no provenance', () => {
+test('blockedTopics names the salary-history and EEO questions with no provenance', () => {
   const blocked = new Set(profile.blockedTopics.map((entry) => entry.key));
-  for (const key of ['answers.expectedSalaryNumeric', 'answers.salaryHistory', 'answers.disabilityStatus']) {
+  for (const key of ['answers.salaryHistory', 'answers.disabilityStatus']) {
     assert.ok(blocked.has(key), `${key} is blocked`);
   }
   for (const entry of profile.blockedTopics) {
     assert.equal(typeof entry.reason, 'string', `${entry.key} explains why it is blocked`);
   }
+
+  // The numeric expectation is confirmed now, so it is an answer and not a blocked topic.
+  assert.equal(blocked.has('answers.expectedSalaryNumeric'), false, 'a confirmed answer is not blocked');
+  assert.deepEqual(profile.answers.expectedSalaryNumeric, { value: 12000000, source: 'confirmed', scope: 'all' });
 });
 
 test('meta names both generation sources', () => {

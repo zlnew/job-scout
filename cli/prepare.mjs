@@ -59,7 +59,8 @@ if (!record) {
 let applyUrl = record.applyUrl ?? null;
 let applyKind = record.applyKind ?? null;
 if (!applyUrl) {
-  const context = await launch({ headless: Boolean(args.headless) });
+  const context = await // Headless by default: this box has no display, and a headed launch dies here.
+  launch({ headless: args.headed ? false : true });
   try {
     const page = context.pages()[0] ?? (await context.newPage());
     const resolved = await resolveApplyTarget({ id, page });

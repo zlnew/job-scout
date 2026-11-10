@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-09",
+  "updated": "2026-11-10",
   "applications": [
     {
       "company": "Kredivo Group",
@@ -60,14 +60,51 @@
       "company": "TechConnect",
       "role": "AI Platform Engineer",
       "score": null,
-      "status": "shortlisted",
+      "status": "prepared",
       "channel": "LinkedIn",
       "posted": "2026-10-23",
       "url": "https://www.linkedin.com/jobs/view/4482830645",
       "notes": "Platform title passes the filter; confirm the JD isn't ML-only.",
       "applyUrl": "https://apply.workable.com/techconnect/j/FC0E026A69",
       "applyKind": "ats",
-      "resolvedAt": "2026-11-09"
+      "resolvedAt": "2026-11-09",
+      "adapter": "workable",
+      "fields": {
+        "First name": "Maulana",
+        "Last name": "Aprizqy Sumaryanto",
+        "Email": "aprizqymaulana@gmail.com",
+        "Phone": "+62 813-8379-4949",
+        "Address": "Bekasi, Indonesia (Jabodetabek)",
+        "City": "Bekasi",
+        "LinkedIn URL": "https://linkedin.com/in/aprizqy",
+        "Website": "https://me.aprizqyhub.my.id",
+        "Resume": {
+          "__file": "../repo/neo-portfolio/public/resume.pdf"
+        },
+        "Nationality": "Indonesia",
+        "Notice Period": "1 month",
+        "Work Eligibility": "Indonesia",
+        "Total Working Experience": 3,
+        "University": "University of Bina Sarana Informatika",
+        "Education Degree": "B.Sc. Software Engineering",
+        "GPA": "3.97 / 4.00",
+        "Year of Graduation": "2023",
+        "Birth Place": "Magelang",
+        "Birth Date": "2002-04-03",
+        "Gender": "Male",
+        "Religion": "Islam",
+        "Marital Status": "Single",
+        "Current monthly salary": 7700000,
+        "Expected monthly salary": 12000000,
+        "Major of Study": "Software Engineering",
+        "Job Vacancy to Apply": "AI Platform Engineer",
+        "Employees who have family ties with your relatives": "None",
+        "By submitting this form": true
+      },
+      "questions": [],
+      "blocked": [],
+      "missing": [],
+      "identityKey": "ae90046a96213e54ff295af736a5e822d758e63a"
     },
     {
       "company": "Vodjo",

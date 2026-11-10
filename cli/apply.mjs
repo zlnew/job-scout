@@ -78,7 +78,8 @@ const slug = String(record.company ?? 'apply').replaceAll(/[^a-z0-9]+/gi, '-').t
 const stamp = new Date().toISOString().replaceAll(/[:.]/g, '-');
 const shotPath = resolve(args.shot ?? join(ROOT, 'screenshots', `${stamp}-${slug}.png`));
 
-const context = await launch({ headless: Boolean(args.headless) });
+const context = await // Headless by default: this box has no display, and a headed launch dies here.
+  launch({ headless: args.headed ? false : true });
 let exitCode = 0;
 let failure = '';
 let submitted = false;

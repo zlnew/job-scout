@@ -389,10 +389,6 @@
   },
   "blockedTopics": [
     {
-      "key": "answers.expectedSalaryNumeric",
-      "reason": "Only a walk-away floor (12000000) and a Negotiable policy are confirmed; a single expected figure is not stated."
-    },
-    {
       "key": "answers.salaryHistory",
       "reason": "Not stated in answers.md or career.json."
     },
@@ -497,6 +493,11 @@
     "majorOfStudy": {
       "value": "Software Engineering",
       "source": "derived",
+      "scope": "all"
+    },
+    "expectedSalaryNumeric": {
+      "value": 12000000,
+      "source": "confirmed",
       "scope": "all"
     }
   }

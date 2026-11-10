@@ -49,9 +49,14 @@ test('blockedTopics keys resolve to blocked, never to a value', () => {
   assert.match(disability.reason, /no answer/i);
 
   const expected = resolveQuestion('Expected monthly salary', PROFILE);
-  assert.equal(expected.status, 'blocked');
+  assert.equal(expected.status, 'answer', 'a confirmed expectation resolves to a value');
   assert.equal(expected.key, 'answers.expectedSalaryNumeric');
-  assert.equal('value' in expected, false, 'a blocked question carries no value');
+  assert.equal(expected.value, 12000000);
+
+  const history = resolveQuestion('Salary History', PROFILE);
+  assert.equal(history.status, 'blocked');
+  assert.equal(history.key, 'answers.salaryHistory');
+  assert.equal('value' in history, false, 'a blocked question carries no value');
 });
 
 test('a label the registry does not know is unknown, not guessed', () => {
@@ -86,8 +91,8 @@ test('describe lists the open questions and drops resolved ones', () => {
   const keys = gaps.map((gap) => gap.key);
 
   assert.ok(!keys.includes('answers.birthDate'), 'an answered question is no longer a gap');
-  assert.ok(keys.includes('answers.expectedSalaryNumeric'), 'expected salary is still open');
-  assert.ok(keys.includes('answers.expectedSalaryNumeric'), 'expected salary is still open');
+  assert.ok(!keys.includes('answers.expectedSalaryNumeric'), 'a confirmed expected salary is no longer a gap');
+  assert.ok(keys.includes('answers.salaryHistory'), 'salary history is still open');
   assert.ok(!keys.includes('work.noticePeriod'), 'a resolved answer is not a gap');
 
   for (const gap of gaps) {

@@ -14,11 +14,6 @@ drops out of the list.
 - why blocked: Not stated in answers.md or career.json.
 - answer:
 
-## Expected monthly salary
-- profile key: `answers.expectedSalaryNumeric`
-- why blocked: Only a walk-away floor (12000000) and a Negotiable policy are confirmed; a single expected figure is not stated.
-- answer:
-
 ## Age
 - profile key: `answers.age`
 - why blocked: Not stated in either source; never derive it from other data.
