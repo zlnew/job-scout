@@ -124,3 +124,69 @@ test('apply refuses when checkSubmission reports a blocked question', () => {
   assert.match(result.stderr, /guard refused: blocked questions: Religion/);
   assert.deepEqual(JSON.parse(readFileSync(store, 'utf8')).applications, [initial]);
 });
+
+test('apply --dry-run --json prints a machine-readable result with the optional warning', () => {
+  const store = storePath('json-dry');
+  const events = eventsPath('json-dry');
+  writeStore(store, [record({ missing: [{ field: 'Job Vacancy to Apply', required: false }] })]);
+
+  const result = run(APPLY, ['--id', ID, '--store', store, '--events', events, '--dry-run', '--headless', '--json']);
+
+  assert.equal(result.status, 0, result.stderr);
+  const payload = JSON.parse(result.stdout);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.code, 'dry-run-clean');
+  assert.equal(payload.value.id, ID);
+  assert.deepEqual(payload.reasons, []);
+  assert.equal(payload.warnings[0].code, 'optional-unmatched');
+  assert.match(payload.warnings[0].fix, /review/i);
+});
+
+test('apply --json prints a coded refusal and keeps exit code 3', () => {
+  const store = storePath('json-refused');
+  writeStore(store, [record({ status: 'shortlisted' })]);
+
+  const result = run(APPLY, ['--id', ID, '--store', store, '--headless', '--json']);
+
+  assert.equal(result.status, 3);
+  const payload = JSON.parse(result.stdout);
+  assert.equal(payload.ok, false);
+  assert.equal(payload.code, 'not-prepared');
+  assert.match(payload.fix, /prepare/);
+});
+
+test('prepare --json prints the structured result without prose', () => {
+  const store = storePath('json-prepare');
+  writeStore(store, [
+    record({
+      status: 'shortlisted',
+      applyUrl: 'https://boards.greenhouse.io/acme/jobs/1',
+      coverLetter: 'Fixture cover letter text.',
+    }),
+  ]);
+
+  const result = run(PREPARE, ['--id', ID, '--store', store, '--json']);
+
+  const payload = JSON.parse(result.stdout);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.code, 'prepared');
+  assert.equal(payload.value.id, ID);
+  assert.equal(payload.value.adapter, 'greenhouse');
+  assert.ok(Array.isArray(payload.value.fields));
+  assert.ok(Array.isArray(payload.reasons));
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('prepare --json reports a missing record on stdout with exit code 2', () => {
+  const store = storePath('json-unknown');
+  writeStore(store, [record()]);
+
+  const result = run(PREPARE, ['--id', '9999999999', '--store', store, '--json']);
+
+  assert.equal(result.status, 2);
+  const payload = JSON.parse(result.stdout);
+  assert.equal(payload.ok, false);
+  assert.equal(payload.code, 'record-not-found');
+  assert.match(payload.message, /9999999999/);
+  assert.match(payload.fix, /scan/);
+});

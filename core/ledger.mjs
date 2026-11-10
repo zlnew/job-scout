@@ -3,8 +3,11 @@
  * event log. Pure functions keep every rule testable; the small fs wrappers
  * only serialise the same shapes.
  */
-import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { identityKey } from './guard.mjs';
+import { CodedError } from './result.mjs';
+import { SCHEMA_VERSION, readJson, migrate, backupBeforeWrite, writeJsonAtomic, writeJsonSafe } from './store.mjs';
 
 export const STATES = Object.freeze([
   'discovered',
@@ -61,7 +64,7 @@ export function upsertRecord(records, record) {
 
 function transitionError(from, to) {
   const known = STATES.includes(from) ? '' : ` (unknown state "${from}")`;
-  return new Error(`illegal transition: ${from} -> ${to}${known}`);
+  return new CodedError('illegal-transition', { message: `illegal transition: ${from} -> ${to}${known}` });
 }
 
 /**
@@ -71,7 +74,7 @@ function transitionError(from, to) {
  */
 export function applyTransition(records, key, to, extra = {}) {
   const index = records.findIndex((record) => keyOf(record) === key);
-  if (index === -1) throw new Error(`no record with identity key ${key}`);
+  if (index === -1) throw new CodedError('record-not-found', { message: `no record with identity key ${key}` });
 
   const current = records[index];
   const from = current.status;
@@ -79,7 +82,7 @@ export function applyTransition(records, key, to, extra = {}) {
 
   // A blocked record may only resume the exact state it was blocked from.
   if (from === 'blocked' && current.blockedFrom && current.blockedFrom !== to) {
-    throw new Error(`illegal transition: blocked -> ${to} (blocked from ${current.blockedFrom})`);
+    throw new CodedError('illegal-transition', { message: `illegal transition: blocked -> ${to} (blocked from ${current.blockedFrom})` });
   }
 
   const next = { ...current, ...extra, status: to };
@@ -106,16 +109,39 @@ export function duplicateOf(records, candidate) {
   return records.find((record) => DUPLICATE_STATES.has(record.status) && keyOf(record) === incoming) ?? null;
 }
 
-export function readStore(path) {
-  const store = JSON.parse(readFileSync(path, 'utf8'));
-  if (Array.isArray(store)) return store;
-  return store.applications ?? [];
+const ROOT = resolve(import.meta.dirname, '..');
+const DATA = join(ROOT, 'data');
+
+/**
+ * Where this file's backups live. Repo data rotates under data/backups; a
+ * caller's own tree (tests, alternate roots) keeps backups inside itself so
+ * nothing is ever written into the checkout from a scratch run.
+ */
+export function backupDirFor(path) {
+  const dir = dirname(resolve(path));
+  return dir === ROOT || dir === DATA ? join(DATA, 'backups') : join(dir, 'backups');
 }
 
-/** 2-space JSON with `updated` first and one trailing newline; record order is preserved. */
+/**
+ * Read the ledger records. A v1 file migrates in memory and is written back
+ * atomically (with a backup) so every later write sees the current schema.
+ */
+export function readStore(path) {
+  const { store, migrated } = migrate(readJson(path));
+  if (migrated) {
+    backupBeforeWrite(path, { backupDir: backupDirFor(path) });
+    writeJsonAtomic(path, store);
+  }
+  return store.applications;
+}
+
+/** 2-space JSON with schemaVersion first, one trailing newline, record order preserved. */
 export function writeStore(path, records) {
-  const store = { updated: new Date().toISOString().slice(0, 10), applications: records };
-  writeFileSync(path, `${JSON.stringify(store, null, 2)}\n`);
+  writeJsonSafe(
+    path,
+    { schemaVersion: SCHEMA_VERSION, updated: new Date().toISOString().slice(0, 10), applications: records },
+    { backupDir: backupDirFor(path) },
+  );
 }
 
 /** Append one audit line. `action` and `key` are required; `ts` is filled in. */

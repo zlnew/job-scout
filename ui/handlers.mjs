@@ -17,7 +17,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { jobIdFromUrl } from '../boards/linkedin.mjs';
 import { identityKey, loadProfile } from '../core/guard.mjs';
-import { appendEvent, applyTransition, readStore, writeStore } from '../core/ledger.mjs';
+import { appendEvent, applyTransition, backupDirFor, readStore, writeStore } from '../core/ledger.mjs';
+import { writeJsonSafe } from '../core/store.mjs';
 import { describe } from '../core/screening.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -201,7 +202,7 @@ export function createHandlers({
       return fail(400, `profile validation failed: ${error.message}`);
     }
 
-    writeFileSync(profilePath, `${JSON.stringify(candidate, null, 2)}\n`);
+    writeJsonSafe(profilePath, candidate, { backupDir: backupDirFor(profilePath) });
     return json(200, { gaps: describe(loadProfile(profilePath)) });
   }
 

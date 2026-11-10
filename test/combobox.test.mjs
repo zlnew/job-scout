@@ -74,7 +74,7 @@ test('an unmatched value is missed with the option reason and leaves the value e
   const result = await fillForm(page, { fields: { Nationality: 'Martian' } });
 
   assert.deepEqual(result.filled, []);
-  assert.deepEqual(result.missed, ['Nationality']);
+  assert.deepEqual(result.missed, [{ field: 'Nationality', required: false }]);
   assert.match(result.lastError, /Nationality: no matching option: "Martian"/);
   assert.equal(await page.locator('#nationality').inputValue(), '', 'no option was clicked, so nothing was half-set');
 });
@@ -84,7 +84,7 @@ test('a combobox that ignores the option click is missed, never silently passed'
   const result = await fillForm(page, { fields: { Nationality: 'Indonesian' } });
 
   assert.deepEqual(result.filled, [], 'an unchanged control is not a filled field');
-  assert.deepEqual(result.missed, ['Nationality']);
+  assert.deepEqual(result.missed, [{ field: 'Nationality', required: false }]);
   assert.match(result.lastError, /Nationality: combobox value did not change/);
   assert.equal(await page.locator('#nationality').inputValue(), '');
 });
@@ -236,7 +236,11 @@ test('word matching refuses to pick between two controls that both mention it', 
   const result = await fillForm(page, { fields: { 'Employees who have family ties with your relatives': 'None' } });
 
   assert.deepEqual(result.filled, []);
-  assert.deepEqual(result.missed, ['Employees who have family ties with your relatives'], 'ambiguity blocks instead of guessing');
+  assert.deepEqual(
+    result.missed,
+    [{ field: 'Employees who have family ties with your relatives', required: true }],
+    'ambiguity blocks instead of guessing',
+  );
   assert.equal(await page.locator('textarea').first().inputValue(), '');
   assert.equal(await page.locator('textarea').nth(1).inputValue(), '');
 });
@@ -245,6 +249,6 @@ test('a control the form does not render is still reported, never silently passe
   const page = await open('<label for="city">City</label><input id="city" />');
   const result = await fillForm(page, { fields: { Address: 'Bekasi, Indonesia', City: 'Bekasi' } });
 
-  assert.deepEqual(result.missed, ['Address']);
+  assert.deepEqual(result.missed, [{ field: 'Address', required: true }]);
   assert.equal(await page.locator('#city').inputValue(), 'Bekasi');
 });

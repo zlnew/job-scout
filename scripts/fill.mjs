@@ -93,7 +93,8 @@ try {
     const guard = checkSubmission({ kind: 'ats', missed: report.missed, requiredEmpty });
 
     if (!guard.ok) {
-      report.submitBlocked = guard.reasons.join('; ');
+      report.submitBlocked = guard.reasons.map((entry) => entry.message).join('; ');
+      report.submitBlockedFixes = guard.reasons.map((entry) => entry.fix);
     } else {
       const button = await findSubmit(page);
       if (!button) {
@@ -106,7 +107,10 @@ try {
         report.submitClicked = true;
       }
     }
-    if (report.submitBlocked) console.error(`refusing to submit — ${report.submitBlocked}`);
+    if (report.submitBlocked) {
+      console.error(`refusing to submit — ${report.submitBlocked}`);
+      for (const fix of report.submitBlockedFixes ?? []) console.error(`  fix: ${fix}`);
+    }
   }
 
   report.submitted = await page.evaluate(() => document.body?.dataset?.submitted ?? null);

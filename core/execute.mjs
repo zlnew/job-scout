@@ -340,9 +340,35 @@ async function fillDate(locator, placeholder, value) {
 }
 
 /**
+ * Whether the form itself demands an answer at this control. A miss has to carry
+ * this: an unmatched optional control (Workable's "Job Vacancy to Apply" list
+ * cannot hold the posted role) must warn, while a required one must refuse.
+ * A radio's own `required` can sit on a sibling, so the whole group is inspected.
+ */
+async function controlRequired(locator) {
+  return locator
+    .evaluate((el) => {
+      const demanded = (node) => node.required || node.getAttribute('aria-required') === 'true';
+      if (demanded(el)) return true;
+      const group = el.closest('fieldset, [role="radiogroup"]');
+      if (group && group.getAttribute('aria-required') === 'true') return true;
+      if (el.type !== 'radio') return false;
+      if (el.name) {
+        const same = `input[type="radio"][name="${CSS.escape(el.name)}"]`;
+        return [...document.querySelectorAll(same)].some(demanded);
+      }
+      return Boolean(group && [...group.querySelectorAll('input[type="radio"]')].some(demanded));
+    })
+    .catch(() => false);
+}
+
+/**
  * Fill a form from a label/name/placeholder map. Fields written as
  * {"__file": "path"} set a file input; submit-like controls are skipped, never
  * clicked, because sending is the caller's explicit decision.
+ *
+ * Every `missed` entry is `{ field, required }` so the guard can separate a
+ * refusal (required) from a warning (optional).
  */
 export async function fillForm(page, { fields, fieldsDir }) {
   const result = { filled: [], missed: [], ambiguous: [], skipped: [] };
@@ -352,7 +378,10 @@ export async function fillForm(page, { fields, fieldsDir }) {
     const found = await locate(page, key);
 
     if (!found) {
-      result.missed.push(key);
+      // Nothing matched this key, so no control proves the question optional:
+      // a stale field map has to refuse rather than pass silently. A control
+      // that exists but is optional is the case that only warns.
+      result.missed.push({ field: key, required: true });
       continue;
     }
     if (found.count > 1) result.ambiguous.push({ field: key, matches: found.count, via: found.via });
@@ -397,7 +426,7 @@ export async function fillForm(page, { fields, fieldsDir }) {
       }
       result.filled.push({ field: key, via: found.via, as });
     } catch (error) {
-      result.missed.push(key);
+      result.missed.push({ field: key, required: await controlRequired(found.locator) });
       result.lastError = `${key}: ${error.message.split('\n')[0]}`;
     }
   }

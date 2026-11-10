@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test, { after } from 'node:test';
@@ -103,8 +103,21 @@ test('applyTransition throws a message naming both states', () => {
   assert.throws(
     () => applyTransition([current], key, 'offer'),
     (error) => {
+      assert.equal(error.code, 'illegal-transition');
       assert.match(error.message, /prepared/);
       assert.match(error.message, /offer/);
+      assert.match(error.fix, /timeline/);
+      return true;
+    },
+  );
+});
+
+test('applyTransition reports an unknown identity key as a coded error', () => {
+  assert.throws(
+    () => applyTransition([record()], 'no-such-key', 'scored'),
+    (error) => {
+      assert.equal(error.code, 'record-not-found');
+      assert.match(error.message, /no record/);
       return true;
     },
   );
@@ -153,7 +166,7 @@ test('appendEvent requires action and key and appends one timestamped line', () 
   assert.equal(lines[1].reason, 'missing answer');
 });
 
-test('writeStore keeps key order, record order, and round-trips', () => {
+test('writeStore keeps key order, record order, schemaVersion, and round-trips', () => {
   const path = join(scratch, 'applications.json');
   const records = [
     record({ role: 'First', status: 'submitted' }),
@@ -163,10 +176,44 @@ test('writeStore keeps key order, record order, and round-trips', () => {
   writeStore(path, records);
   const first = readFileSync(path, 'utf8');
   assert.ok(first.endsWith('\n'));
-  assert.ok(first.startsWith('{\n  "updated": '));
-  assert.deepEqual(Object.keys(JSON.parse(first)), ['updated', 'applications']);
+  assert.ok(first.startsWith('{\n  "schemaVersion": 2,\n  "updated": '));
+  assert.deepEqual(Object.keys(JSON.parse(first)), ['schemaVersion', 'updated', 'applications']);
   assert.deepEqual(readStore(path), records);
 
   writeStore(path, records);
   assert.equal(readFileSync(path, 'utf8'), first);
+  // The second write rotated the first state into the scratch backup dir.
+  assert.equal(readdirSync(join(scratch, 'backups')).length, 1);
+});
+
+test('readStore migrates a v1 store in memory and writes v2 back atomically with a backup', () => {
+  const path = join(scratch, 'v1.json');
+  const records = [record({ role: 'Legacy', status: 'shortlisted' })];
+  writeFileSync(path, `${JSON.stringify({ updated: '2026-01-01', applications: records }, null, 2)}\n`);
+
+  assert.deepEqual(readStore(path), records);
+
+  const migrated = JSON.parse(readFileSync(path, 'utf8'));
+  assert.equal(migrated.schemaVersion, 2);
+  assert.equal(migrated.updated, '2026-01-01');
+  assert.deepEqual(migrated.applications, records);
+
+  const backups = join(scratch, 'backups');
+  assert.equal(existsSync(backups), true);
+  const backup = readdirSync(backups).find((name) => name.startsWith('v1.'));
+  assert.ok(backup, 'the pre-migration file is kept');
+  assert.equal(JSON.parse(readFileSync(join(backups, backup), 'utf8')).schemaVersion, undefined);
+});
+
+test('readStore leaves a v2 store untouched on disk', () => {
+  const path = join(scratch, 'v2.json');
+  writeStore(path, [record()]);
+  const before = readFileSync(path, 'utf8');
+  const backupsBefore = existsSync(join(scratch, 'backups')) ? readdirSync(join(scratch, 'backups')).length : 0;
+
+  readStore(path);
+
+  assert.equal(readFileSync(path, 'utf8'), before);
+  const backupsAfter = existsSync(join(scratch, 'backups')) ? readdirSync(join(scratch, 'backups')).length : 0;
+  assert.equal(backupsAfter, backupsBefore);
 });

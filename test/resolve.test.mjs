@@ -9,7 +9,6 @@ import {
   jobIdFromInput,
   mergeResolution,
   pendingResolutions,
-  serializeStore,
   unwrapRedirect,
 } from './../scripts/resolve.mjs';
 
@@ -159,18 +158,6 @@ test('pendingResolutions picks only shortlisted, unresolved LinkedIn rows', () =
 
   assert.deepEqual(pendingResolutions(records, 5), ['111', '444']);
   assert.deepEqual(pendingResolutions(records, 1), ['111']);
-});
-
-test('serializeStore keeps 2-space JSON and a trailing newline', () => {
-  const store = {
-    updated: '2026-11-09',
-    applications: [{ company: 'A', url: 'https://www.linkedin.com/jobs/view/111' }],
-  };
-  const text = serializeStore(store);
-
-  assert.equal(text, `${JSON.stringify(store, null, 2)}\n`);
-  assert.ok(text.endsWith('}\n'));
-  assert.deepEqual(JSON.parse(text), store);
 });
 
 test('CLI without arguments prints usage and exits 2', () => {

@@ -1,10 +1,11 @@
 /**
  * Resolve one posting's application target and report what a submit would need.
  *
- *   node cli/prepare.mjs --id <linkedin id | url> [--write] [--headless]
+ *   node cli/prepare.mjs --id <linkedin id | url> [--write] [--headless] [--json]
  *
  * Without --write nothing is stored. With --write the record moves to
- * `prepared` when nothing blocks, else to `blocked` with a one-line reason.
+ * `prepared` when nothing blocks, else to `blocked` with the reasons and fixes.
+ * --json prints the structured result (S5) and nothing else.
  * Exit codes: 0 prepared, 3 blocked, 2 usage/unknown record, 4 session expired.
  */
 import { join, resolve } from 'node:path';
@@ -17,6 +18,7 @@ import {
 } from '../boards/linkedin.mjs';
 import { checkSubmission, identityKey, loadProfile } from '../core/guard.mjs';
 import { appendEvent, applyTransition, readStore, writeStore } from '../core/ledger.mjs';
+import { fail, ok, reason, refusal } from '../core/result.mjs';
 import { launch, parseArgs } from '../scripts/browser.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -24,14 +26,28 @@ const STORE = join(ROOT, 'applications.json');
 const PROFILE = join(ROOT, 'data/profile.json');
 const EVENTS = join(ROOT, 'data/events.jsonl');
 const USAGE = [
-  'usage: node cli/prepare.mjs --id <linkedin id | url> [--write] [--headless]',
+  'usage: node cli/prepare.mjs --id <linkedin id | url> [--write] [--headless] [--json]',
   '       [--store <applications.json>] [--profile <profile.json>] [--events <events.jsonl>]',
 ].join('\n');
 
 const args = parseArgs(process.argv.slice(2));
+const jsonOut = Boolean(args.json);
+// In --json mode stdout carries exactly one result object, so no human line
+// may slip in alongside it.
+const log = (...parts) => {
+  if (!jsonOut) console.log(...parts);
+};
+const emit = (result) => {
+  if (jsonOut) process.stdout.write(`${JSON.stringify(result)}\n`);
+};
+const die = (status, result, lines) => {
+  if (jsonOut) emit(result);
+  else for (const line of lines) console.error(line);
+  process.exit(status);
+};
+
 if (!args.id) {
-  console.error(USAGE);
-  process.exit(2);
+  die(2, fail('usage', { message: USAGE }), [USAGE]);
 }
 
 let id;
@@ -39,9 +55,7 @@ try {
   const raw = String(args.id).trim();
   id = /^\d+$/.test(raw) ? jobIdFromInput({ id: raw }) : jobIdFromInput({ url: raw });
 } catch (error) {
-  console.error(error.message);
-  console.error(USAGE);
-  process.exit(2);
+  die(2, fail('usage', { message: error.message }), [error.message, USAGE]);
 }
 
 const storePath = resolve(args.store ?? STORE);
@@ -52,8 +66,8 @@ const record = records.find(
   (candidate) => String(candidate.linkedinId ?? '') === id || jobIdFromUrl(candidate.url ?? '') === id,
 );
 if (!record) {
-  console.error(`no record for LinkedIn job ${id} in ${storePath}`);
-  process.exit(2);
+  const message = `no record for LinkedIn job ${id} in ${storePath}`;
+  die(2, fail('record-not-found', { message }), [message]);
 }
 
 let applyUrl = record.applyUrl ?? null;
@@ -68,8 +82,8 @@ if (!applyUrl) {
     applyKind = resolved.kind;
   } catch (error) {
     if (error instanceof SessionExpired) {
-      console.error(`session expired: ${error.message}`);
-      process.exit(4);
+      const message = `session expired: ${error.message}`;
+      die(4, fail('session-expired', { message }), [message]);
     }
     throw error;
   } finally {
@@ -96,25 +110,61 @@ const guard = checkSubmission({
   priorRecords: records,
 });
 
-const blockers = [...new Set([
-  ...guard.reasons,
-  ...(adapter.supportsSubmit ? [] : [`adapter ${adapter.name} does not auto-submit`]),
-  ...(applyKind === 'ats' ? [] : [`${applyKind ?? 'unknown'} apply target cannot be auto-submitted`]),
-  ...map.questions.map((question) => `${question.label}: ${question.reason}`),
-])];
+// Ordered, de-duplicated by message: a rule and an adapter may name the same gap.
+const blockers = [
+  ...new Map([
+    ...guard.reasons,
+    ...(adapter.supportsSubmit
+      ? []
+      : [reason('adapter-unverified', { message: `adapter ${adapter.name} does not auto-submit` })]),
+    ...(applyKind === 'ats'
+      ? []
+      : [
+          reason(applyKind === 'easy-apply' ? 'easy-apply' : 'adapter-unverified', {
+            message: `${applyKind ?? 'unknown'} apply target cannot be auto-submitted`,
+          }),
+        ]),
+    ...map.questions.map((question) =>
+      reason('blocked-question', { message: `${question.label}: ${question.reason}` }),
+    ),
+  ].map((entry) => [entry.message, entry])).values(),
+];
 const canSubmitToday = blockers.length === 0;
 
 const fieldLabels = Object.keys(map.fields);
-console.log(`${record.company} - ${record.role} (${id})`);
-console.log(`adapter: ${adapter.name}${adapter.supportsSubmit ? '' : ' (no auto-submit)'}`);
-console.log(`apply: ${applyUrl ?? 'none'} (${applyKind ?? 'unknown'})`);
-console.log(`fields: ${fieldLabels.length}`);
-for (const label of fieldLabels) console.log(`  - ${label}`);
-console.log(`blocks: ${blockers.length}`);
-for (const blocker of blockers) console.log(`  - ${blocker}`);
-console.log(`submit today: ${canSubmitToday ? 'yes' : 'no'}`);
+const value = {
+  id,
+  company: record.company,
+  role: record.role,
+  applyUrl,
+  applyKind,
+  adapter: adapter.name,
+  supportsSubmit: adapter.supportsSubmit,
+  fields: fieldLabels,
+  canSubmitToday,
+};
+const result = canSubmitToday
+  ? { ...ok('prepared', value), reasons: [], warnings: guard.warnings }
+  : refusal(blockers, guard.warnings, value);
 
-if (!args.write) process.exit(canSubmitToday ? 0 : 3);
+log(`${record.company} - ${record.role} (${id})`);
+log(`adapter: ${adapter.name}${adapter.supportsSubmit ? '' : ' (no auto-submit)'}`);
+log(`apply: ${applyUrl ?? 'none'} (${applyKind ?? 'unknown'})`);
+log(`fields: ${fieldLabels.length}`);
+for (const label of fieldLabels) log(`  - ${label}`);
+log(`blocks: ${blockers.length}`);
+for (const blocker of blockers) {
+  log(`  - ${blocker.message}`);
+  if (blocker.fix) log(`    fix: ${blocker.fix}`);
+}
+// Optional controls the map could not fill: reported, never counted as a block.
+for (const warning of guard.warnings) log(`warnings: ${warning.message}`);
+log(`submit today: ${canSubmitToday ? 'yes' : 'no'}`);
+
+if (!args.write) {
+  emit(result);
+  process.exit(canSubmitToday ? 0 : 3);
+}
 
 const extra = {
   applyUrl,
@@ -127,6 +177,7 @@ const extra = {
   identityKey: key,
 };
 const matches = (candidate) => (candidate.identityKey ?? identityKey(candidate)) === key;
+const blockerText = blockers.map((entry) => entry.message).join('; ');
 let nextRecords = records;
 
 if (canSubmitToday) {
@@ -142,10 +193,9 @@ if (canSubmitToday) {
     }
   }
 } else if (record.status === 'blocked') {
-  const blockedReason = blockers.join('; ');
-  nextRecords = records.map((candidate) => (matches(candidate) ? { ...candidate, ...extra, blockedReason } : candidate));
+  nextRecords = records.map((candidate) => (matches(candidate) ? { ...candidate, ...extra, blockedReason: blockerText } : candidate));
 } else {
-  nextRecords = applyTransition(records, key, 'blocked', { ...extra, reason: blockers.join('; ') }).records;
+  nextRecords = applyTransition(records, key, 'blocked', { ...extra, reason: blockerText }).records;
 }
 
 writeStore(storePath, nextRecords);
@@ -155,7 +205,8 @@ appendEvent(eventsPath, {
   id,
   adapter: adapter.name,
   fields: fieldLabels.length,
-  blockedReason: canSubmitToday ? undefined : blockers.join('; '),
+  blockedReason: canSubmitToday ? undefined : blockerText,
 });
-console.log(`written: ${canSubmitToday ? 'prepared' : 'blocked'} -> ${storePath}`);
+log(`written: ${canSubmitToday ? 'prepared' : 'blocked'} -> ${storePath}`);
+emit(result);
 process.exit(canSubmitToday ? 0 : 3);

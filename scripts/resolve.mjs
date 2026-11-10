@@ -10,9 +10,9 @@
  * Without --write the result is printed and nothing is stored. Easy Apply stays manual:
  * the harness refuses to automate it.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readStore, writeStore } from '../core/ledger.mjs';
 import {
   classifyApplyTarget,
   isAuthwallUrl,
@@ -63,11 +63,6 @@ export function mergeResolution(records, result, resolvedAt = new Date().toISOSt
   });
 }
 
-/** The store keeps 2-space JSON and one trailing newline; diffs stay readable. */
-export function serializeStore(store) {
-  return `${JSON.stringify(store, null, 2)}\n`;
-}
-
 const invokedDirectly = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invokedDirectly) {
   const args = parseArgs(process.argv.slice(2));
@@ -78,8 +73,7 @@ if (invokedDirectly) {
     if (wantsBatch) {
       const limit = Number(args.limit);
       if (!Number.isInteger(limit) || limit < 1) throw new Error('--limit must be a positive whole number');
-      const store = JSON.parse(readFileSync(STORE, 'utf8'));
-      ids = pendingResolutions(store.applications ?? [], limit);
+      ids = pendingResolutions(readStore(STORE), limit);
     } else {
       ids = [jobIdFromInput(args)];
     }
@@ -127,11 +121,9 @@ if (invokedDirectly) {
   }
 
   if (args.write) {
-    const store = JSON.parse(readFileSync(STORE, 'utf8'));
-    let records = store.applications ?? [];
+    let records = readStore(STORE);
     for (const result of results) records = mergeResolution(records, result);
-    const written = serializeStore({ ...store, applications: records });
-    writeFileSync(STORE, written);
+    writeStore(STORE, records);
     console.error(`wrote ${results.length} resolution(s) to ${STORE}`);
   }
 
