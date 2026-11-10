@@ -18,8 +18,9 @@ const USAGE = [
   '       [--store <applications.json>] [--profile <profile.json>] [--events <events.jsonl>]',
   '',
   'Serves the control page on a loopback address. Browser jobs are queued and',
-  'reported through GET /api/job/:id; nothing is submitted unless the request',
-  'carries dryRun: false and the stored company name as confirm.',
+  'reported through GET /api/job/:id and the /api/stream event feed; nothing is',
+  'submitted unless the request carries dryRun: false and the stored company',
+  'name as confirm.',
 ].join('\n');
 
 const args = parseArgs(process.argv.slice(2));
@@ -91,14 +92,28 @@ async function readBody(req) {
 const server = createServer(async (req, res) => {
   try {
     const body = await readBody(req);
-    const path = new URL(req.url ?? '/', `http://${host}:${port}`).pathname;
-    const result = handlers.handle({ method: req.method, path, body });
+    const url = new URL(req.url ?? '/', `http://${host}:${port}`);
+    // The event feed stays open, so it never goes through the request/response
+    // handler that returns one JSON body.
+    if (url.pathname === '/api/stream') {
+      handlers.openStream(res);
+      return;
+    }
+    const result = handlers.handle({ method: req.method, path: url.pathname, query: url.searchParams, body });
     res.writeHead(result.status, result.headers);
     res.end(result.body);
   } catch (error) {
+    // Transport failures keep the shared failure shape instead of raw prose.
     const status = error instanceof HttpError ? error.status : 400;
     res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ error: error.message }));
+    res.end(
+      JSON.stringify({
+        code: 'usage',
+        message: error.message,
+        fix: 'reload the page and retry the action',
+        error: error.message,
+      }),
+    );
   }
 });
 

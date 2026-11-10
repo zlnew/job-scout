@@ -7,311 +7,740 @@
 <style>
   :root {
     color-scheme: dark;
-    --bg: #101214;
+    --bg: #0f1215;
     --panel: #181b1f;
-    --line: #2a2f36;
+    --line: #2d333b;
     --text: #e7e9ec;
-    --muted: #9aa3ad;
-    --accent: #7cc4ff;
-    --ok: #74d99f;
-    --warn: #f0b35f;
-    --bad: #ff8b8b;
+    --muted: #a7b0ba;
+    --accent: #8ccbff;
+    --focus: #ffd166;
+    --ok: #8ce0ae;
+    --warn: #f3bd72;
+    --bad: #ff9d9d;
   }
   * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    overflow-wrap: anywhere;
   }
-  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
-  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
-  h1 { font-size: 20px; margin: 0; font-weight: 600; }
-  h2 { font-size: 14px; margin: 0 0 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-  .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
-  .chip b { color: var(--accent); margin-right: 6px; }
-  button {
-    background: #232830; color: var(--text); border: 1px solid var(--line);
-    border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer;
+  .wrap { width: 100%; max-width: 1120px; margin: 0 auto; padding: 20px; }
+  a { color: var(--accent); }
+  h1 { font-size: 20px; margin: 0; font-weight: 650; }
+  h2 { font-size: 14px; margin: 0 0 10px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  h3 { font-size: 16px; margin: 0 0 2px; font-weight: 650; }
+  p { margin: 0 0 10px; }
+  p:last-child { margin-bottom: 0; }
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  nav { display: flex; flex-wrap: wrap; gap: 6px; }
+  nav a {
+    display: inline-block; padding: 6px 12px; border-radius: 8px;
+    border: 1px solid var(--line); color: var(--text); text-decoration: none;
   }
-  button:hover:not(:disabled) { border-color: var(--accent); }
-  button:disabled { opacity: .5; cursor: default; }
-  button.primary { border-color: #3f6c8f; background: #1d3a4e; }
-  button.danger { border-color: #7a3d3d; background: #3a2020; color: #ffd7d7; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-  th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
-  tbody tr:hover { background: #1d2127; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .muted { color: var(--muted); }
-  .actions { display: flex; gap: 6px; flex-wrap: wrap; }
-  .gaps { display: grid; gap: 10px; }
-  .gap { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.4fr) auto; gap: 10px; align-items: center; }
-  .gap .label { font-weight: 500; }
-  .gap .reason { color: var(--muted); font-size: 12px; }
-  .gap .key { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--muted); }
-  input {
-    width: 100%; background: #0d0f12; color: var(--text); border: 1px solid var(--line);
-    border-radius: 6px; padding: 7px 9px; font: inherit;
+  nav a[aria-current="page"] { border-color: var(--accent); color: var(--accent); }
+  .live { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+  .live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+  .live[data-state="on"]::before { background: var(--ok); }
+  .live[data-state="off"]::before { background: var(--bad); }
+  .skip { position: absolute; left: -999px; top: 0; background: var(--panel); color: var(--text); padding: 8px 12px; z-index: 10; }
+  .skip:focus { left: 8px; top: 8px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; min-width: 0; }
+  .banner { min-height: 0; margin-bottom: 12px; }
+  .banner:empty { display: none; }
+  .banner .panel { margin: 0; border-color: #4a5a2f; background: #1d2415; }
+  .banner[data-tone="bad"] .panel { border-color: #6b3b3b; background: #261818; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; background: #1f242a; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 13px; }
+  .chip b { color: var(--accent); font-weight: 650; }
+  .badge { display: inline-block; border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; font-size: 12px; color: var(--muted); }
+  .badge[data-tone="ok"] { color: var(--ok); border-color: #2f5a40; }
+  .badge[data-tone="warn"] { color: var(--warn); border-color: #5f4a28; }
+  .badge[data-tone="bad"] { color: var(--bad); border-color: #6b3b3b; }
+  ul.rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  ul.rows > li { border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: #15181c; min-width: 0; }
+  .rowTop { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+  .rowTop h3 { margin: 0; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 10px; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+  .reason { margin: 0 0 8px; }
+  .fix { color: var(--warn); font-size: 13px; margin: 0 0 10px; }
+  .scoreLine { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; }
+  .scoreTotal { font-size: 20px; font-weight: 700; color: var(--accent); margin-right: 4px; }
+  .scoreChip { font-size: 12px; }
+  .scoreChip b { color: var(--text); }
+  .scoreEq { color: var(--muted); font-size: 13px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button, .button {
+    display: inline-block; background: #232a32; color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px;
+    font: inherit; text-decoration: none; cursor: pointer;
   }
-  input:focus { outline: none; border-color: var(--accent); }
-  pre {
-    margin: 0; padding: 12px; background: #0b0d10; border: 1px solid var(--line); border-radius: 6px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
-    max-height: 320px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+  button:hover:not(:disabled), .button:hover { border-color: var(--accent); }
+  button:disabled { opacity: .55; cursor: default; }
+  button.primary, .button.primary { border-color: #3f6c8f; background: #1d3a4e; }
+  button.danger { border-color: #7a3d3d; background: #3a2020; color: #ffdede; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  input, select, textarea {
+    width: 100%; background: #101317; color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; font: inherit;
   }
-  #status { min-height: 20px; color: var(--muted); font-size: 13px; }
-  #status.bad { color: var(--bad); }
-  #status.good { color: var(--ok); }
-  .empty { color: var(--muted); padding: 8px 0; }
+  textarea { min-height: 220px; resize: vertical; }
+  .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; margin-bottom: 12px; }
+  .filters .buttons { display: flex; gap: 8px; }
+  .empty { color: var(--muted); }
+  .empty strong { color: var(--text); display: block; margin-bottom: 4px; }
+  ul.timeline { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--line); }
+  ul.timeline li { position: relative; padding: 0 0 14px 16px; min-width: 0; }
+  ul.timeline li::before { content: ""; position: absolute; left: -6px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+  ul.timeline li[data-tone="attention"]::before { background: var(--warn); }
+  .when { color: var(--muted); font-size: 12px; }
+  dl.answers { margin: 0; display: grid; gap: 10px; }
+  dl.answers > div { border-bottom: 1px solid var(--line); padding-bottom: 8px; min-width: 0; }
+  dl.answers dt { font-weight: 600; margin-bottom: 2px; }
+  dl.answers dd { margin: 0; color: var(--muted); }
+  .prov { font-size: 12px; color: var(--ok); font-weight: 500; }
+  .prov[data-kind="derived"] { color: var(--accent); }
+  pre.letter { white-space: pre-wrap; overflow-wrap: anywhere; background: #101317; border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin: 0 0 10px; }
+  .list { margin: 0; padding-left: 18px; }
+  .list li { margin-bottom: 6px; }
+  code { background: #101317; border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: 13px; overflow-wrap: anywhere; }
+  .skeleton { display: grid; gap: 12px; }
+  .skeleton div { height: 96px; border-radius: 10px; background: linear-gradient(90deg, #181b1f 25%, #20252b 50%, #181b1f 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
+  @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  .split { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .stack > * + * { margin-top: 12px; }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton div { animation: none; }
+  }
 </style>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <div class="wrap">
   <header>
-    <h1>job-apply control</h1>
-    <div class="actions">
-      <button id="refresh" class="primary">Refresh</button>
+    <div class="brand">
+      <h1>job-apply</h1>
+      <span class="live" id="live" data-state="off" role="status">connecting</span>
     </div>
+    <nav aria-label="Screens">
+      <a href="#/today" data-route="today">Today</a>
+      <a href="#/postings" data-route="postings">Postings</a>
+      <a href="#/connections" data-route="connections">Connections &amp; rules</a>
+    </nav>
   </header>
-
-  <div id="counts" class="chips"></div>
-
-  <section class="panel">
-    <h2>Unanswered gaps</h2>
-    <div id="gaps" class="gaps"></div>
-  </section>
-
-  <section class="panel">
-    <h2>Applications</h2>
-    <div style="overflow-x:auto">
-      <table>
-        <thead>
-          <tr>
-            <th class="num">Score</th>
-            <th>Company</th>
-            <th>Role</th>
-            <th>Status</th>
-            <th>Applied</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="records"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="panel">
-    <h2>Browser job</h2>
-    <pre id="job">No job running.</pre>
-  </section>
-
-  <section class="panel">
-    <h2>Event log</h2>
-    <pre id="log">Loading...</pre>
-  </section>
-
-  <div id="status"></div>
+  <div class="banner" id="banner" role="status" aria-live="polite"></div>
+  <main id="main" tabindex="-1" aria-live="polite"></main>
 </div>
+<script type="module">
+const main = document.querySelector('#main');
+const banner = document.querySelector('#banner');
+const live = document.querySelector('#live');
 
-<script>
-  const counts = document.getElementById('counts');
-  const gaps = document.getElementById('gaps');
-  const records = document.getElementById('records');
-  const jobPane = document.getElementById('job');
-  const logPane = document.getElementById('log');
-  const statusLine = document.getElementById('status');
+// ---- small DOM helpers ----------------------------------------------------
 
-  function status(message, kind) {
-    statusLine.textContent = message;
-    statusLine.className = kind ?? '';
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [name, value] of Object.entries(attrs)) {
+    if (value === undefined || value === null || value === false) continue;
+    if (name === 'class') node.className = value;
+    else if (name === 'text') node.textContent = value;
+    else if (name.startsWith('on')) node.addEventListener(name.slice(2), value);
+    else node.setAttribute(name, value === true ? '' : value);
+  }
+  for (const child of children.flat()) {
+    if (child === null || child === undefined || child === false) continue;
+    node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  }
+  return node;
+}
+
+const fmtWhen = (iso) => {
+  if (!iso) return 'time not recorded';
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? String(iso) : date.toLocaleString();
+};
+const fmtDay = (iso) => (iso ? String(iso) : 'not recorded');
+const show = (value) => {
+  if (value === null || value === undefined || value === '') return 'not recorded';
+  if (Array.isArray(value)) return value.map(show).join(', ');
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+};
+const title = (row) => [row.company, row.role].filter(Boolean).join(' - ') || 'Untitled record';
+
+function badge(text, tone) {
+  return el('span', { class: 'badge', 'data-tone': tone }, text);
+}
+
+function skeleton() {
+  main.replaceChildren(
+    el('p', { class: 'sr-only', text: 'Loading this screen' }),
+    el('div', { class: 'skeleton', 'aria-hidden': 'true' }, el('div'), el('div'), el('div')),
+  );
+}
+
+function errorPanel(error) {
+  const fix = error.fix || 'Reload the page and try again.';
+  main.replaceChildren(
+    el('section', { class: 'panel', 'aria-labelledby': 'load-error' },
+      el('h2', { id: 'load-error' }, 'This screen could not load'),
+      el('p', { text: error.message || 'The request failed.' }),
+      el('p', { class: 'fix', text: `Fix: ${fix}` }),
+      el('div', { class: 'actions' },
+        el('button', { class: 'primary', onclick: () => render() }, 'Retry'),
+      ),
+    ),
+  );
+}
+
+function emptyPanel(headline, nextStep) {
+  return el('section', { class: 'panel empty' },
+    el('p', {}, el('strong', { text: headline }), nextStep),
+  );
+}
+
+async function api(path, options = {}) {
+  const response = await fetch(path, {
+    headers: { 'content-type': 'application/json' },
+    ...options,
+  });
+  let data = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+  if (!response.ok) {
+    const error = new Error(data?.message || 'The request failed.');
+    error.code = data?.code || null;
+    error.fix = data?.fix || null;
+    throw error;
+  }
+  return data;
+}
+
+// ---- actions --------------------------------------------------------------
+
+function setBanner(text, tone = 'ok') {
+  banner.dataset.tone = tone;
+  banner.replaceChildren(el('div', { class: 'panel' }, el('p', { text })));
+}
+
+function clearBanner() {
+  banner.replaceChildren();
+}
+
+async function runAction(action, row) {
+  if (action.kind === 'navigate') {
+    location.hash = action.href.startsWith('#') ? action.href : `#${action.href}`;
+    return;
+  }
+  const body = { ...action.body };
+  if (action.kind === 'submit') {
+    const company = row.company ?? '';
+    const ok = window.confirm(`Submit the application to ${company || 'this company'}?\n\nThis clicks the real submit button and cannot be undone.`);
+    if (!ok) return;
+    body.confirm = company;
+  }
+  setBanner(action.kind === 'submit' ? 'Submitting the application...' : 'Working on the application...');
+  try {
+    await api(action.path, { method: 'POST', body: JSON.stringify(body) });
+  } catch (error) {
+    setBanner(`${error.message} ${error.fix ? `Fix: ${error.fix}` : ''}`.trim(), 'bad');
+  }
+}
+
+function actionControl(action, row, { primary = false } = {}) {
+  const className = primary ? 'button primary' : 'button';
+  if (action.kind === 'navigate') {
+    return el('a', { class: className, href: action.href }, action.label);
+  }
+  return el('button', { class: className, onclick: () => runAction(action, row) }, action.label);
+}
+
+// ---- Today ----------------------------------------------------------------
+
+function renderToday(data) {
+  const needs = data.needsYou.length === 0
+    ? emptyPanel('Nothing needs you right now.', ' New postings and finished runs will appear here.')
+    : el('ul', { class: 'rows', 'aria-label': 'What needs you now' },
+        data.needsYou.map((item) => el('li', {},
+          el('div', { class: 'rowTop' },
+            el('h3', { text: title(item) }),
+            badge(item.kind === 'blocked' ? 'blocked' : item.kind === 'prepared' ? 'ready to submit' : 'needs a retry', item.kind === 'blocked' ? 'bad' : 'warn'),
+          ),
+          el('p', { class: 'reason', text: item.reason }),
+          item.fix ? el('p', { class: 'fix', text: `Fix: ${item.fix}` }) : null,
+          el('div', { class: 'actions' }, actionControl(item.action, item, { primary: true })),
+        )),
+      );
+
+  const followUps = data.followUpsDue.length === 0
+    ? emptyPanel('No follow-ups are due.', ' A submitted application is due seven days after it was sent.')
+    : el('ul', { class: 'rows', 'aria-label': 'Follow-ups due' },
+        data.followUpsDue.map((item) => el('li', {},
+          el('div', { class: 'rowTop' }, el('h3', { text: title(item) })),
+          el('p', { class: 'meta' }, `applied ${fmtDay(item.applied)}`, el('span', { text: `due ${fmtDay(item.due)}` })),
+          el('div', { class: 'actions' }, el('a', { class: 'button', href: item.key ? `#/application/${item.key}` : '#/postings' }, 'Follow up')),
+        )),
+      );
+
+  const sessions = el('ul', { class: 'rows', 'aria-label': 'Session health' },
+    data.sessions.map((session) => el('li', {},
+      el('div', { class: 'rowTop' },
+        el('h3', { text: session.name }),
+        badge(session.status, session.status === 'no session needed' || session.status === 'session stored' ? 'ok' : 'warn'),
+      ),
+      el('p', { class: 'meta' }, `via ${session.via}`, session.verified ? 'verified' : 'unverified config'),
+      session.reauth ? el('p', {}, 'Sign in again: ', el('code', { text: session.reauth })) : null,
+      session.note ? el('p', { class: 'fix', text: session.note }) : null,
+    )),
+  );
+
+  const recent = data.recent.length === 0
+    ? emptyPanel('No runs yet.', ' Prepare an application and its steps will appear here.')
+    : el('ol', { class: 'timeline', 'aria-label': 'Recent activity' },
+        data.recent.map((item) => el('li', { 'data-tone': item.outcome },
+          el('p', {}, badge(item.outcome === 'ok' ? 'ok' : 'needs attention', item.outcome === 'ok' ? 'ok' : 'warn'), ' ', item.text),
+          el('p', { class: 'when', text: fmtWhen(item.ts) }),
+          item.fix ? el('p', { class: 'fix', text: `Fix: ${item.fix}` }) : null,
+          item.href ? el('a', { href: item.href }, 'Open application') : null,
+        )),
+      );
+
+  main.replaceChildren(
+    el('section', { class: 'panel', 'aria-labelledby': 'today-needs' },
+      el('h2', { id: 'today-needs' }, 'What needs you now'),
+      needs,
+    ),
+    el('section', { class: 'panel', 'aria-labelledby': 'today-follow' },
+      el('h2', { id: 'today-follow' }, 'Follow-ups due'),
+      followUps,
+    ),
+    el('div', { class: 'split' },
+      el('section', { class: 'panel', 'aria-labelledby': 'today-sessions' },
+        el('h2', { id: 'today-sessions' }, 'Session health'),
+        sessions,
+      ),
+      el('section', { class: 'panel', 'aria-labelledby': 'today-recent' },
+        el('h2', { id: 'today-recent' }, 'Recent autonomous actions'),
+        recent,
+      ),
+    ),
+  );
+}
+
+// ---- Postings -------------------------------------------------------------
+
+const filters = { status: '', minScore: '', source: '' };
+
+function scoreLine(breakdown) {
+  const chips = breakdown.chips.map((chip) =>
+    el('span', { class: 'chip scoreChip', 'aria-label': `${chip.label} ${chip.points >= 0 ? 'plus' : 'minus'} ${Math.abs(chip.points)}` },
+      el('span', { text: chip.label }),
+      el('b', { text: `${chip.points >= 0 ? '+' : ''}${chip.points}` }),
+    ),
+  );
+  return el('div', { class: 'scoreLine' },
+    el('span', { class: 'scoreTotal', text: breakdown.score === null ? 'no score' : String(breakdown.score) }),
+    ...chips,
+    breakdown.score === null ? null : el('span', { class: 'scoreEq', text: breakdown.equals ? '= recorded score' : `= ${breakdown.total} listed` }),
+  );
+}
+
+function postingRow(row) {
+  return el('li', {},
+    el('div', { class: 'rowTop' },
+      el('h3', { text: title(row) }),
+      badge(row.source),
+      row.seenOn ? el('span', { class: 'meta', text: `seen on ${fmtDay(row.seenOn)}` }) : null,
+      badge(row.status, row.status === 'blocked' ? 'bad' : row.status === 'submitted' ? 'ok' : 'warn'),
+      row.followUpDue ? badge('follow-up due', 'bad') : null,
+    ),
+    el('p', { class: 'meta' }, `posted ${fmtDay(row.posted)}`, `score ${row.score ?? 'not scored'}`, `status ${row.status}`),
+    scoreLine(row.scoreBreakdown),
+    el('div', { class: 'actions' }, actionControl(row.action, row, { primary: true })),
+  );
+}
+
+function renderPostings(data) {
+  const counts = el('div', { class: 'chips', role: 'list', 'aria-label': 'Records by status' },
+    Object.entries(data.counts).sort().map(([status, count]) =>
+      el('span', { class: 'chip', role: 'listitem' }, el('b', { text: String(count) }), status),
+    ),
+  );
+
+  const statusSelect = el('select', { id: 'filter-status', onchange: (event) => { filters.status = event.target.value; loadPostings(); } },
+    el('option', { value: '' }, 'any status'),
+    data.statuses.map((status) => el('option', { value: status, selected: filters.status === status }, status)),
+  );
+  const scoreInput = el('input', {
+    id: 'filter-score', type: 'number', min: '0', max: '10', inputmode: 'numeric',
+    value: filters.minScore,
+    placeholder: 'any',
+    onchange: (event) => { filters.minScore = event.target.value; loadPostings(); },
+  });
+  const sourceSelect = el('select', { id: 'filter-source', onchange: (event) => { filters.source = event.target.value; loadPostings(); } },
+    el('option', { value: '' }, 'any source'),
+    data.sources.map((source) => el('option', { value: source, selected: filters.source === source }, source)),
+  );
+
+  const list = data.rows.length === 0
+    ? emptyPanel('No postings match these filters.', ' Clear a filter, or run a scan to discover more.')
+    : el('ul', { class: 'rows', 'aria-label': 'Postings' }, data.rows.map(postingRow));
+
+  main.replaceChildren(
+    el('section', { class: 'panel', 'aria-labelledby': 'postings-title' },
+      el('h2', { id: 'postings-title' }, 'Postings'),
+      counts,
+      el('div', { class: 'filters' },
+        el('div', {}, el('label', { for: 'filter-status' }, 'Status'), statusSelect),
+        el('div', {}, el('label', { for: 'filter-score' }, 'Minimum score'), scoreInput),
+        el('div', {}, el('label', { for: 'filter-source' }, 'Source'), sourceSelect),
+        el('div', { class: 'buttons' }, el('button', {
+          onclick: () => {
+            filters.status = '';
+            filters.minScore = '';
+            filters.source = '';
+            loadPostings();
+          },
+        }, 'Clear filters')),
+      ),
+      list,
+    ),
+  );
+}
+
+function loadPostings() {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) if (value !== '') query.set(key, value);
+  const sequence = ++renderSequence;
+  skeleton();
+  api(`/api/postings?${query}`)
+    .then((data) => { if (sequence === renderSequence) renderPostings(data); })
+    .catch((error) => { if (sequence === renderSequence) errorPanel(error); });
+}
+
+// ---- Application detail ---------------------------------------------------
+
+function answerRow(answer) {
+  return el('div', {},
+    el('dt', {}, answer.label,
+      el('span', { class: 'prov', 'data-kind': answer.provenance.kind, text: ` ${answer.provenance.text}` }),
+    ),
+    el('dd', { text: show(answer.value) }),
+    answer.scope ? el('dd', { class: 'when', text: `scope: ${answer.scope}` }) : null,
+  );
+}
+
+function letterPanel(data) {
+  const { letter, record } = data;
+  if (!letter.current) {
+    return el('section', { class: 'panel', 'aria-labelledby': 'detail-letter' },
+      el('h2', { id: 'detail-letter' }, 'Cover letter'),
+      el('p', { class: 'empty', text: 'No letter is stored for this application yet.' }),
+      el('p', {}, 'Generate one from the command line, then edit it here: ', el('code', { text: 'node cli/letter.mjs --id <id> --generate --why "..."' })),
+    );
   }
 
-  async function api(path, options) {
-    const response = await fetch(path, {
-      headers: { 'content-type': 'application/json' },
-      ...options,
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || response.statusText);
-    return data;
-  }
+  const revisions = el('ul', { class: 'list', 'aria-label': 'Letter revisions' },
+    letter.revisions.map((entry) => el('li', {},
+      `revision ${entry.revision}`,
+      entry.current ? ' (current)' : '',
+      ` - ${entry.origin}`,
+      entry.createdAt ? `, ${fmtWhen(entry.createdAt)}` : '',
+      entry.note ? `, note: ${entry.note}` : '',
+    )),
+  );
 
-  function el(tag, className, text) {
-    const node = document.createElement(tag);
-    if (className) node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
-  }
-
-  function renderCounts(value) {
-    counts.textContent = '';
-    const entries = Object.entries(value).sort((a, b) => b[1] - a[1]);
-    if (entries.length === 0) {
-      counts.append(el('span', 'chip muted', 'no records'));
-      return;
-    }
-    for (const [name, count] of entries) {
-      const chip = el('span', 'chip');
-      const number = el('b', '', String(count));
-      chip.append(number, document.createTextNode(name));
-      counts.append(chip);
-    }
-  }
-
-  function scalableValue(raw) {
-    if (raw === 'true') return true;
-    if (raw === 'false') return false;
-    if (/^-?\d+(?:\.\d+)?$/.test(raw)) return Number(raw);
-    return raw;
-  }
-
-  function renderGaps(items) {
-    gaps.textContent = '';
-    if (items.length === 0) {
-      gaps.append(el('div', 'empty', 'No unanswered questions.'));
-      return;
-    }
-    for (const gap of items) {
-      const row = el('div', 'gap');
-      const meta = el('div');
-      meta.append(el('div', 'label', gap.label));
-      meta.append(el('div', 'reason', gap.reason));
-      meta.append(el('div', 'key', gap.key));
-
-      const input = el('input');
-      input.placeholder = 'value (true/false or number are converted)';
-      input.setAttribute('aria-label', 'Answer for ' + gap.label);
-
-      const save = el('button', 'primary', 'Save');
-      save.addEventListener('click', async () => {
-        const raw = input.value.trim();
-        if (raw === '') {
-          input.focus();
-          return;
-        }
-        save.disabled = true;
-        try {
-          const result = await api('/api/answers', {
-            method: 'POST',
-            body: JSON.stringify({ key: gap.key, value: scalableValue(raw) }),
-          });
-          renderGaps(result.gaps);
-          status('Saved ' + gap.label, 'good');
-          loadLog();
-        } catch (error) {
-          status(error.message, 'bad');
-        } finally {
-          save.disabled = false;
-        }
+  const textarea = el('textarea', { id: 'letter-text', 'aria-label': 'Letter text for the new revision' });
+  textarea.value = letter.current.text;
+  const note = el('input', { id: 'letter-note', type: 'text', placeholder: 'what changed (optional)', 'aria-label': 'Note for this revision' });
+  const save = el('button', { class: 'primary' }, 'Save as new revision');
+  save.addEventListener('click', async () => {
+    save.disabled = true;
+    try {
+      await api(`/api/letter/${record.key}`, {
+        method: 'POST',
+        body: JSON.stringify({ text: textarea.value, note: note.value || undefined }),
       });
-
-      row.append(meta, input, save);
-      gaps.append(row);
-    }
-  }
-
-  async function runJob(path, payload) {
-    jobPane.textContent = 'Queued...';
-    try {
-      const { job } = await api(path, { method: 'POST', body: JSON.stringify(payload) });
-      for (;;) {
-        const state = await api('/api/job/' + encodeURIComponent(job));
-        jobPane.textContent = 'state: ' + state.state + '\n\n' + (state.output || '(no output yet)');
-        if (state.state === 'done' || state.state === 'error') {
-          status(state.state === 'done' ? 'Job finished.' : 'Job failed; see output.', state.state === 'done' ? 'good' : 'bad');
-          load();
-          loadLog();
-          return;
-        }
-        await new Promise((done) => setTimeout(done, 1000));
-      }
+      setBanner('Your edited revision was stored.');
+      await render();
     } catch (error) {
-      jobPane.textContent = error.message;
-      status(error.message, 'bad');
+      setBanner(`${error.message} ${error.fix ? `Fix: ${error.fix}` : ''}`.trim(), 'bad');
+      save.disabled = false;
     }
-  }
-
-  function renderRecords(items) {
-    records.textContent = '';
-    if (items.length === 0) {
-      const row = el('tr');
-      const cell = el('td', 'empty', 'No applications in the ledger.');
-      cell.colSpan = 6;
-      row.append(cell);
-      records.append(row);
-      return;
-    }
-
-    for (const record of items) {
-      const row = el('tr');
-      const id = record.linkedinId ?? record.identityKey;
-
-      row.append(el('td', 'num', record.score === null || record.score === undefined ? '-' : String(record.score)));
-      row.append(el('td', '', record.company ?? ''));
-      row.append(el('td', '', record.role ?? ''));
-      row.append(el('td', '', record.status ?? ''));
-      row.append(el('td', '', record.applied ?? record.resolvedAt ?? ''));
-
-      const actions = el('td');
-      const group = el('div', 'actions');
-
-      const prepare = el('button', '', 'Prepare');
-      prepare.addEventListener('click', () => runJob('/api/prepare', { id }));
-
-      const dry = el('button', '', 'Apply dry-run');
-      dry.addEventListener('click', () => runJob('/api/apply', { id, dryRun: true }));
-
-      const real = el('button', 'danger', 'Apply for real');
-      real.addEventListener('click', () => {
-        const typed = window.prompt('Type the company name exactly to submit for real:\n' + (record.company ?? ''));
-        if (typed === null) return;
-        if (typed !== record.company) {
-          status('Company name did not match; nothing was submitted.', 'bad');
-          return;
-        }
-        runJob('/api/apply', { id, dryRun: false, confirm: typed });
-      });
-
-      group.append(prepare, dry, real);
-      actions.append(group);
-      row.append(actions);
-      records.append(row);
-    }
-  }
-
-  async function loadLog() {
-    try {
-      const { lines } = await api('/api/log');
-      logPane.textContent = lines.length
-        ? lines.map((line) => line.raw ?? [line.ts ?? '', line.action ?? '', line.status ?? '', line.id ?? ''].join('  ')).join('\n')
-        : 'No events yet.';
-    } catch (error) {
-      logPane.textContent = error.message;
-    }
-  }
-
-  async function load() {
-    try {
-      const board = await api('/api/board');
-      renderCounts(board.counts);
-      renderGaps(board.gaps);
-      renderRecords(board.records);
-      status('Loaded ' + board.records.length + ' records.');
-    } catch (error) {
-      status(error.message, 'bad');
-    }
-  }
-
-  document.getElementById('refresh').addEventListener('click', () => {
-    load();
-    loadLog();
   });
 
-  load();
-  loadLog();
+  return el('section', { class: 'panel', 'aria-labelledby': 'detail-letter' },
+    el('h2', { id: 'detail-letter' }, 'Cover letter'),
+    el('p', {},
+      badge(`revision ${letter.current.revision}`, 'ok'),
+      ' ',
+      badge(letter.current.origin, 'warn'),
+      ' ',
+      el('span', { class: 'when', text: `${letter.current.words} words, ${fmtWhen(letter.current.createdAt)}` }),
+    ),
+    el('pre', { class: 'letter', text: letter.current.text }),
+    el('h2', {}, 'Revision history'),
+    revisions,
+    el('h2', {}, 'Edit letter'),
+    el('div', { class: 'stack' },
+      el('div', {}, el('label', { for: 'letter-text' }, 'New revision text'), textarea),
+      el('div', {}, el('label', { for: 'letter-note' }, 'Note'), note),
+      el('div', { class: 'actions' }, save),
+    ),
+  );
+}
+
+function renderApplication(data) {
+  const { record, timeline, answers, lastRun } = data;
+
+  const steps = timeline.length === 0
+    ? emptyPanel('Nothing has happened yet.', ' Prepare this application to start its timeline.')
+    : el('ol', { class: 'timeline', 'aria-label': 'Application timeline' },
+        timeline.map((step) => el('li', { 'data-tone': step.outcome },
+          el('p', {}, step.outcome === 'attention' ? badge('needs attention', 'warn') : null, step.outcome === 'attention' ? ' ' : null, step.text),
+          el('p', { class: 'when', text: fmtWhen(step.ts) }),
+          step.detail ? el('p', { class: 'fix', text: step.detail }) : null,
+          step.evidence.url ? el('p', {}, el('a', { href: step.evidence.url, target: '_blank', rel: 'noopener noreferrer' }, 'Open the posting')) : null,
+          step.evidence.screenshot ? el('p', {}, el('a', { href: `/api/screenshot/${record.key}`, target: '_blank', rel: 'noopener noreferrer' }, 'View the screenshot')) : null,
+          step.evidence.letterRevision ? el('p', { class: 'when', text: `letter revision sent: ${step.evidence.letterRevision}` }) : null,
+        )),
+      );
+
+  const last = lastRun
+    ? el('section', { class: 'panel', 'aria-labelledby': 'detail-last' },
+        el('h2', { id: 'detail-last' }, 'Last run'),
+        el('p', { class: 'meta', text: lastRun.at ? fmtWhen(lastRun.at) : 'from the stored record' }),
+        lastRun.refusals.length === 0 && lastRun.warnings.length === 0
+          ? el('p', { class: 'empty', text: 'No refusals or warnings in the last run.' })
+          : el('ul', { class: 'list' },
+              lastRun.refusals.map((item) => el('li', {},
+                item.field ? el('strong', { text: `${item.field}: ` }) : null,
+                item.message,
+                item.fix ? el('p', { class: 'fix', text: `Fix: ${item.fix}` }) : null,
+              )),
+              lastRun.warnings.map((item) => el('li', {},
+                `Warning: ${item.message}`,
+                item.fix ? el('p', { class: 'fix', text: `Fix: ${item.fix}` }) : null,
+              )),
+            ),
+      )
+    : null;
+
+  main.replaceChildren(
+    el('p', {}, el('a', { href: '#/postings' }, 'Back to Postings')),
+    el('section', { class: 'panel', 'aria-labelledby': 'detail-title' },
+      el('h2', { id: 'detail-title' }, 'Application'),
+      el('div', { class: 'rowTop' },
+        el('h3', { text: title(record) }),
+        badge(record.status, record.status === 'blocked' ? 'bad' : record.status === 'submitted' ? 'ok' : 'warn'),
+        record.followUpDue ? badge('follow-up due', 'bad') : null,
+      ),
+      el('p', { class: 'meta' },
+        `source ${record.source}`,
+        `posted ${fmtDay(record.posted)}`,
+        record.applied ? `applied ${fmtDay(record.applied)}` : null,
+        record.letterRevision ? `sent letter revision ${record.letterRevision}` : null,
+      ),
+      scoreLine(record.scoreBreakdown),
+      el('div', { class: 'actions' },
+        actionControl(data.action, record, { primary: true }),
+        record.screenshot
+          ? el('a', { class: 'button', href: `/api/screenshot/${record.key}`, target: '_blank', rel: 'noopener noreferrer' }, 'View the screenshot')
+          : null,
+      ),
+    ),
+    el('div', { class: 'split' },
+      el('section', { class: 'panel', 'aria-labelledby': 'detail-timeline' },
+        el('h2', { id: 'detail-timeline' }, 'Timeline, newest last'),
+        steps,
+      ),
+      el('section', { class: 'panel', 'aria-labelledby': 'detail-answers' },
+        el('h2', { id: 'detail-answers' }, 'Answers used, with provenance'),
+        answers.length === 0
+          ? el('p', { class: 'empty', text: 'No answers were used.' })
+          : el('dl', { class: 'answers' }, answers.map(answerRow)),
+      ),
+    ),
+    letterPanel(data),
+    last,
+  );
+}
+
+// ---- Connections & rules --------------------------------------------------
+
+function renderConnections(data) {
+  const sessions = el('ul', { class: 'rows', 'aria-label': 'Sources and sessions' },
+    data.sessions.map((session) => el('li', {},
+      el('div', { class: 'rowTop' },
+        el('h3', { text: session.name }),
+        badge(session.status, session.status === 'no session needed' || session.status === 'session stored' ? 'ok' : 'warn'),
+        session.verified ? badge('verified', 'ok') : badge('unverified config', 'bad'),
+      ),
+      el('p', { class: 'meta' }, `via ${session.via}`),
+      session.reauth ? el('p', {}, 'Sign in again: ', el('code', { text: session.reauth })) : el('p', { class: 'empty', text: 'No sign-in needed.' }),
+      session.note ? el('p', { class: 'fix', text: session.note }) : null,
+    )),
+  );
+
+  const scoring = el('dl', { class: 'answers' },
+    el('div', {}, el('dt', { text: 'Level' }), el('dd', { text: show(data.rules.scoring.level) })),
+    el('div', {}, el('dt', { text: 'Years of experience' }), el('dd', { text: show(data.rules.scoring.yearsExperience) })),
+    el('div', {}, el('dt', { text: 'Track order and weights' }), el('dd', { text: show(data.rules.scoring.trackOrder) })),
+    el('div', {}, el('dt', { text: 'Accepted titles' }), el('dd', { text: show(data.rules.scoring.accepted) })),
+    el('div', {}, el('dt', { text: 'Bare software engineer title' }), el('dd', { text: show(data.rules.scoring.bareSoftwareEngineer) })),
+  );
+
+  const comp = data.rules.compensation;
+  const compensation = el('dl', { class: 'answers' },
+    el('div', {}, el('dt', { text: 'Currency' }), el('dd', { text: show(comp.currency) })),
+    el('div', {}, el('dt', { text: 'Floor' }), el('dd', { text: show(comp.floor) })),
+    el('div', {}, el('dt', { text: 'Target band' }), el('dd', { text: `${show(comp.targetMin)} to ${show(comp.targetMax)}` })),
+    el('div', {}, el('dt', { text: 'Form policy' }), el('dd', { text: show(comp.policy) })),
+    el('div', {}, el('dt', { text: 'Benefits' }), el('dd', { text: show(comp.benefits) })),
+  );
+
+  const blocked = data.rules.blockedTopics.length === 0
+    ? el('p', { class: 'empty', text: 'No blocked topics.' })
+    : el('ul', { class: 'list' },
+        data.rules.blockedTopics.map((topic) => el('li', {},
+          el('strong', { text: topic.label }),
+          ' - ',
+          el('code', { text: topic.key }),
+          topic.reason ? el('p', { class: 'when', text: topic.reason }) : null,
+        )),
+      );
+
+  const never = el('ul', { class: 'list' },
+    data.rules.never.map((rule) => el('li', { text: rule })),
+  );
+
+  main.replaceChildren(
+    el('section', { class: 'panel', 'aria-labelledby': 'connections-sources' },
+      el('h2', { id: 'connections-sources' }, 'Connections'),
+      sessions,
+    ),
+    el('div', { class: 'split' },
+      el('section', { class: 'panel', 'aria-labelledby': 'connections-score' },
+        el('h2', { id: 'connections-score' }, 'Scoring thresholds'),
+        scoring,
+      ),
+      el('section', { class: 'panel', 'aria-labelledby': 'connections-comp' },
+        el('h2', { id: 'connections-comp' }, 'Compensation band'),
+        compensation,
+      ),
+    ),
+    el('section', { class: 'panel', 'aria-labelledby': 'connections-blocked' },
+      el('h2', { id: 'connections-blocked' }, 'Blocked topics'),
+      blocked,
+    ),
+    el('section', { class: 'panel', 'aria-labelledby': 'connections-never' },
+      el('h2', { id: 'connections-never' }, 'What the agent will never do'),
+      never,
+    ),
+  );
+}
+
+// ---- routing, refresh and the event stream --------------------------------
+
+let renderSequence = 0;
+
+function routeNow() {
+  const path = location.hash.replace(/^#/, '') || '/today';
+  const application = path.match(/^\/application\/(.+)$/);
+  if (application) return { name: 'application', key: decodeURIComponent(application[1]) };
+  if (path === '/postings') return { name: 'postings' };
+  if (path === '/connections') return { name: 'connections' };
+  return { name: 'today' };
+}
+
+function markNav(route) {
+  for (const link of document.querySelectorAll('nav a')) {
+    const active =
+      link.dataset.route === route.name ||
+      (route.name === 'application' && link.dataset.route === 'postings');
+    if (active) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  }
+}
+
+async function render() {
+  const route = routeNow();
+  const sequence = ++renderSequence;
+  markNav(route);
+  document.title = `${route.name === 'application' ? 'Application' : route.name[0].toUpperCase() + route.name.slice(1)} - job-apply`;
+  skeleton();
+  try {
+    if (route.name === 'today') {
+      const data = await api('/api/today');
+      if (sequence === renderSequence) renderToday(data);
+    } else if (route.name === 'postings') {
+      const query = new URLSearchParams();
+      for (const [key, value] of Object.entries(filters)) if (value !== '') query.set(key, value);
+      const data = await api(`/api/postings?${query}`);
+      if (sequence === renderSequence) renderPostings(data);
+    } else if (route.name === 'connections') {
+      const data = await api('/api/sessions');
+      if (sequence === renderSequence) renderConnections(data);
+    } else {
+      const data = await api(`/api/application/${encodeURIComponent(route.key)}`);
+      if (sequence === renderSequence) renderApplication(data);
+    }
+  } catch (error) {
+    if (sequence === renderSequence) errorPanel(error);
+  }
+  main.focus({ preventScroll: true });
+}
+
+let refreshTimer = null;
+function refreshSoon() {
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => render(), 250);
+}
+
+function connectStream() {
+  const source = new EventSource('/api/stream');
+  source.addEventListener('hello', () => {
+    live.dataset.state = 'on';
+    live.textContent = 'live';
+  });
+  source.addEventListener('job', (event) => {
+    let job = {};
+    try {
+      job = JSON.parse(event.data);
+    } catch {
+      job = {};
+    }
+    if (job.state === 'queued' || job.state === 'running') {
+      setBanner('The agent is working on an application...');
+    } else if (job.state === 'done') {
+      setBanner('The run finished.');
+      refreshSoon();
+    } else if (job.state === 'error') {
+      setBanner('The run stopped before it could finish. Open the application to retry from its current state.', 'bad');
+      refreshSoon();
+    }
+  });
+  source.addEventListener('events', () => refreshSoon());
+  source.onerror = () => {
+    live.dataset.state = 'off';
+    live.textContent = 'reconnecting';
+  };
+}
+
+window.addEventListener('hashchange', () => {
+  clearBanner();
+  render();
+});
+connectStream();
+render();
 </script>
 </body>
 </html>

@@ -15,6 +15,7 @@ import { findAdapter } from '../adapters/index.mjs';
 import { SessionExpired, jobIdFromInput, jobIdFromUrl } from '../boards/linkedin.mjs';
 import { findSubmit, fillForm, requiredEmptyControls } from '../core/execute.mjs';
 import { checkSubmission, identityKey, loadProfile } from '../core/guard.mjs';
+import { readLetter } from '../core/letters.mjs';
 import { appendEvent, applyTransition, readStore, writeStore } from '../core/ledger.mjs';
 import { fail, ok, refusal } from '../core/result.mjs';
 import { launch, parseArgs } from '../scripts/browser.mjs';
@@ -169,12 +170,21 @@ try {
       }
 
       if (exitCode === 0 && clicked) {
+        // Record the exact letter revision that went out. A missing letter is
+        // not a reason to fail a submission that already succeeded.
+        let letterRevision = null;
+        try {
+          letterRevision = readLetter(key).current;
+        } catch {
+          letterRevision = null;
+        }
         mkdirSync(dirname(shotPath), { recursive: true });
         await page.screenshot({ path: shotPath, fullPage: true });
         const { records: nextRecords } = applyTransition(records, key, 'submitted', {
           applied: new Date().toISOString().slice(0, 10),
           screenshot: shotPath,
           identityKey: key,
+          ...(letterRevision === null ? {} : { letterRevision }),
         });
         writeStore(storePath, nextRecords);
         appendEvent(eventsPath, {
@@ -184,6 +194,7 @@ try {
           adapter: adapter.name,
           fields: filled.filled.length,
           screenshot: shotPath,
+          ...(letterRevision === null ? {} : { letterRevision }),
           durationMs: Date.now() - started,
         });
         submitted = true;

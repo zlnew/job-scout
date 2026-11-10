@@ -7,42 +7,60 @@
  * transitions, `loadProfile` owns provenance, and prepare/apply run the real
  * CLI entry points in a child process instead of reimplementing them.
  *
- * No browser state, cookies, or CDP URLs are read here; the UI has no view of
- * them at all.
+ * Cookie contents and CDP URLs are never read here; the UI only checks whether
+ * a browser profile exists, never what is inside it.
  */
 import { spawn as nodeSpawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { jobIdFromUrl } from '../boards/linkedin.mjs';
+import { listSources } from '../boards/index.mjs';
 import { identityKey, loadProfile } from '../core/guard.mjs';
 import { appendEvent, applyTransition, backupDirFor, readStore, writeStore } from '../core/ledger.mjs';
+import { LETTERS_DIR, appendRevision, readLetter } from '../core/letters.mjs';
+import { CODES } from '../core/result.mjs';
 import { writeJsonSafe } from '../core/store.mjs';
 import { describe } from '../core/screening.mjs';
+import {
+  applicationView,
+  boardOrder,
+  countByStatus,
+  postingsView,
+  rulesView,
+  todayView,
+} from './view.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const MAX_OUTPUT = 64 * 1024;
 const JSON_HEADERS = Object.freeze({ 'content-type': 'application/json; charset=utf-8' });
+const SSE_HEADERS = Object.freeze({
+  'content-type': 'text/event-stream; charset=utf-8',
+  'cache-control': 'no-cache',
+  connection: 'keep-alive',
+});
 
 const json = (status, payload) => ({ status, headers: JSON_HEADERS, body: JSON.stringify(payload) });
-const fail = (status, message) => json(status, { error: message });
 
-/** Board order: best score first, newest posting first within a score. */
-function boardOrder(a, b) {
-  const score = (b.score ?? -1) - (a.score ?? -1);
-  if (score !== 0) return score;
-  return String(b.posted ?? '').localeCompare(String(a.posted ?? ''));
-}
+/**
+ * Every failure carries the same `{ code, message, fix }` shape the CLIs use
+ * (S5), so a screen can render one fix action without parsing prose. `error`
+ * stays for clients written against the first API version.
+ */
+const failure = (status, code, message, detail) => {
+  const known = CODES[code] ?? { message: 'the request could not be completed', fix: 'reload the page and try again' };
+  const body = {
+    code,
+    message: message ?? known.message,
+    fix: known.fix ?? 'reload the page and try again',
+    ...(detail !== undefined ? { detail } : {}),
+  };
+  return json(status, { ...body, error: body.message });
+};
 
-function countByStatus(records) {
-  const counts = {};
-  for (const record of records) {
-    const status = record.status ?? 'unknown';
-    counts[status] = (counts[status] ?? 0) + 1;
-  }
-  return counts;
-}
+/** Statuses the UI cannot map to a result code still need a stable shape. */
+const NOT_FOUND = (what) => failure(404, 'record-not-found', `no ${what} matches that address`);
 
 const keyOf = (record) => record.identityKey ?? identityKey(record);
 
@@ -102,15 +120,40 @@ export function createHandlers({
   profilePath = join(ROOT, 'data/profile.json'),
   eventsPath = join(ROOT, 'data/events.jsonl'),
   uiPath = join(ROOT, 'ui/index.html'),
+  lettersRoot = LETTERS_DIR,
+  browserProfilePath = join(ROOT, 'profile'),
   spawn = nodeSpawn,
   root = ROOT,
 } = {}) {
   const jobs = new Map();
   const queue = [];
+  const streams = new Set();
   let draining = false;
+
+  // Server-sent events replace polling: every state change is pushed to every
+  // open page. A dead socket simply drops out of the set on `close`.
+  function broadcast(event, data) {
+    const frame = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+    for (const res of streams) {
+      try {
+        res.write(frame);
+      } catch {
+        streams.delete(res);
+      }
+    }
+  }
+
+  function openStream(res) {
+    res.writeHead(200, SSE_HEADERS);
+    res.write('retry: 3000\n\n');
+    res.write(`event: hello\ndata: ${JSON.stringify({ ok: true })}\n\n`);
+    streams.add(res);
+    res.on?.('close', () => streams.delete(res));
+  }
 
   const appendOutput = (job, chunk) => {
     job.output = (job.output + String(chunk)).slice(-MAX_OUTPUT);
+    broadcast('job', jobView(job));
   };
 
   function finish(job, code, detail) {
@@ -123,6 +166,7 @@ export function createHandlers({
       if (detail) appendOutput(job, `\n${detail}\n`);
     }
     draining = false;
+    broadcast('job', jobView(job));
     drain();
   }
 
@@ -135,6 +179,7 @@ export function createHandlers({
     draining = true;
     const { job, command, args } = next;
     job.state = 'running';
+    broadcast('job', jobView(job));
 
     let child;
     try {
@@ -154,6 +199,7 @@ export function createHandlers({
     const job = { id: randomUUID(), state: 'queued', output: '', exitCode: null };
     jobs.set(job.id, job);
     queue.push({ job, command, args });
+    broadcast('job', jobView(job));
     drain();
     return job;
   }
@@ -164,10 +210,56 @@ export function createHandlers({
   function cliTarget(id) {
     const records = readStore(storePath);
     const record = findRecord(records, id);
-    if (!record) return { error: fail(404, `no record for ${JSON.stringify(String(id ?? ''))}`) };
+    if (!record) return { error: NOT_FOUND('record') };
     const linkedinId = record.linkedinId ? String(record.linkedinId) : jobIdFromUrl(record.url ?? '');
-    if (!linkedinId) return { error: fail(400, 'record has no LinkedIn id to run the CLI with') };
+    if (!linkedinId) return { error: failure(400, 'usage', 'this record has no LinkedIn id to run a job with') };
     return { record, linkedinId };
+  }
+
+  function readEvents() {
+    let text;
+    try {
+      text = readFileSync(eventsPath, 'utf8');
+    } catch (error) {
+      if (error.code === 'ENOENT') return [];
+      throw error;
+    }
+    return text
+      .split('\n')
+      .filter((line) => line.trim() !== '')
+      .flatMap((line) => {
+        try {
+          return [JSON.parse(line)];
+        } catch {
+          return [];
+        }
+      });
+  }
+
+  function sessions() {
+    // The persistent profile is shared by every session source. Only its
+    // existence is checked: the UI never reads cookies.
+    const signedIn = existsSync(join(browserProfilePath, 'Default', 'Cookies'));
+    return listSources().map(({ name, via, verified }) => ({
+      name,
+      via,
+      verified,
+      status:
+        via === 'api'
+          ? 'no session needed'
+          : !verified
+            ? 'config unverified'
+            : signedIn
+              ? 'session stored'
+              : 'no session stored',
+      reauth: via === 'api' ? null : `npm run login -- https://${name}.com`,
+      note:
+        via === 'api'
+          ? 'public guest endpoint; nothing to sign in to'
+          : verified
+            ? null
+            : 'confirm the selectors with a headed run before scanning',
+    }));
   }
 
   function getBoard() {
@@ -179,16 +271,131 @@ export function createHandlers({
     });
   }
 
+  function getToday() {
+    const records = readStore(storePath);
+    const gaps = describe(loadProfile(profilePath));
+    return json(200, todayView({ records, events: readEvents(), sessions: sessions(), gaps }));
+  }
+
+  function getPostings(params) {
+    const records = readStore(storePath);
+    return json(
+      200,
+      postingsView({
+        records,
+        gaps: describe(loadProfile(profilePath)),
+        filters: {
+          status: params.get('status') ?? undefined,
+          minScore: params.get('minScore') ?? undefined,
+          source: params.get('source') ?? undefined,
+        },
+      }),
+    );
+  }
+
+  function getSessions() {
+    return json(200, { sessions: sessions(), rules: rulesView(loadProfile(profilePath)) });
+  }
+
+  function letterFor(key) {
+    try {
+      return readLetter(key, undefined, { root: lettersRoot });
+    } catch (error) {
+      if (error.code === 'letter-not-found') return null;
+      throw error;
+    }
+  }
+
+  function recordFor(id) {
+    return findRecord(readStore(storePath), id);
+  }
+
+  function getApplication(id) {
+    const record = recordFor(id);
+    if (!record) return NOT_FOUND('application');
+    const key = keyOf(record);
+    return json(
+      200,
+      applicationView({
+        record,
+        events: readEvents(),
+        profile: loadProfile(profilePath),
+        letter: letterFor(key),
+      }),
+    );
+  }
+
+  function getLetter(id) {
+    const record = recordFor(id);
+    if (!record) return NOT_FOUND('application');
+    const key = keyOf(record);
+    const letter = letterFor(key);
+    if (!letter) return failure(404, 'letter-not-found');
+    return json(200, {
+      key,
+      current: letter.current,
+      revisions: letter.revisions,
+      origin: letter.origin,
+      createdAt: letter.createdAt,
+      words: letter.words,
+      note: letter.note ?? null,
+      text: letter.text,
+    });
+  }
+
+  /** The stored screenshot for one application, only when it lives under the repo. */
+  function getScreenshot(id) {
+    const record = recordFor(id);
+    if (!record) return NOT_FOUND('application');
+    const shot = record.screenshot ? resolve(record.screenshot) : null;
+    if (!shot || !shot.startsWith(`${resolve(root)}/`) || !existsSync(shot)) {
+      return failure(404, 'record-not-found', 'this application has no screenshot yet');
+    }
+    const type = shot.endsWith('.jpg') || shot.endsWith('.jpeg') ? 'image/jpeg' : shot.endsWith('.webp') ? 'image/webp' : 'image/png';
+    return { status: 200, headers: { 'content-type': type }, body: readFileSync(shot) };
+  }
+
+  function postLetter(id, body) {
+    const record = recordFor(id);
+    if (!record) return NOT_FOUND('application');
+    const key = keyOf(record);
+    if (!body || typeof body !== 'object') return failure(400, 'usage', 'expected a JSON body');
+    if (typeof body.text !== 'string' || body.text.trim() === '') {
+      return failure(400, 'letter-empty', 'the edit is empty; a letter revision needs text');
+    }
+
+    const revision = appendRevision(
+      key,
+      {
+        text: body.text,
+        origin: 'edited',
+        ...(body.note === undefined || body.note === '' ? {} : { note: String(body.note) }),
+      },
+      { root: lettersRoot, company: record.company, role: record.role },
+    );
+    appendEvent(eventsPath, {
+      action: 'letter',
+      key,
+      revision,
+      origin: 'edited',
+      ...(body.note === undefined || body.note === '' ? {} : { note: String(body.note) }),
+    });
+    broadcast('events', { at: new Date().toISOString() });
+    const stored = letterFor(key);
+    const { path: _bodyPath, ...index } = stored ?? {};
+    return json(201, { index, revision });
+  }
+
   function postAnswers(body) {
-    if (!body || typeof body !== 'object') return fail(400, 'expected a JSON body');
+    if (!body || typeof body !== 'object') return failure(400, 'usage', 'expected a JSON body');
     const { key, value } = body;
-    if (typeof key !== 'string' || !key.trim()) return fail(400, 'key is required');
-    if (!isScalar(value)) return fail(400, 'value must be a string, number, or boolean');
+    if (typeof key !== 'string' || !key.trim()) return failure(400, 'usage', 'a profile key is required');
+    if (!isScalar(value)) return failure(400, 'usage', 'the answer must be a string, number, or boolean');
 
     const profile = JSON.parse(readFileSync(profilePath, 'utf8'));
     const blocked = Array.isArray(profile.blockedTopics) ? profile.blockedTopics : [];
     if (!blocked.some((entry) => entry?.key === key)) {
-      return fail(400, `key ${JSON.stringify(key)} is not in blockedTopics`);
+      return failure(400, 'usage', `${JSON.stringify(key)} is not a blocked topic in the profile`);
     }
 
     const candidate = structuredClone(profile);
@@ -199,28 +406,29 @@ export function createHandlers({
       validateCandidate(candidate);
     } catch (error) {
       // The answer never reaches the committed profile when provenance fails.
-      return fail(400, `profile validation failed: ${error.message}`);
+      return failure(400, 'provenance-invalid', error.message);
     }
 
     writeJsonSafe(profilePath, candidate, { backupDir: backupDirFor(profilePath) });
+    broadcast('events', { at: new Date().toISOString() });
     return json(200, { gaps: describe(loadProfile(profilePath)) });
   }
 
   function postStatus(body) {
-    if (!body || typeof body !== 'object') return fail(400, 'expected a JSON body');
+    if (!body || typeof body !== 'object') return failure(400, 'usage', 'expected a JSON body');
     const { id, status, note } = body;
-    if (typeof status !== 'string' || !status) return fail(400, 'status is required');
+    if (typeof status !== 'string' || !status) return failure(400, 'usage', 'a status is required');
 
     const records = readStore(storePath);
     const record = findRecord(records, id);
-    if (!record) return fail(404, `no record for ${JSON.stringify(String(id ?? ''))}`);
+    if (!record) return NOT_FOUND('record');
 
     const key = keyOf(record);
     let moved;
     try {
       moved = applyTransition(records, key, status);
     } catch (error) {
-      return fail(409, error.message);
+      return failure(409, error.code === 'illegal-transition' ? 'illegal-transition' : 'usage', error.message);
     }
 
     writeStore(storePath, moved.records);
@@ -231,11 +439,12 @@ export function createHandlers({
       status,
       ...(note === undefined ? {} : { note: String(note) }),
     });
+    broadcast('events', { at: new Date().toISOString() });
     return json(200, { record: moved.record });
   }
 
   function postPrepare(body) {
-    if (!body || typeof body !== 'object' || body.id === undefined) return fail(400, 'id is required');
+    if (!body || typeof body !== 'object' || body.id === undefined) return failure(400, 'usage', 'a job id is required');
     const target = cliTarget(body.id);
     if (target.error) return target.error;
 
@@ -255,13 +464,17 @@ export function createHandlers({
   }
 
   function postApply(body) {
-    if (!body || typeof body !== 'object' || body.id === undefined) return fail(400, 'id is required');
+    if (!body || typeof body !== 'object' || body.id === undefined) return failure(400, 'usage', 'a job id is required');
     const target = cliTarget(body.id);
     if (target.error) return target.error;
 
     const dryRun = body.dryRun !== false;
     if (!dryRun && (typeof target.record.company !== 'string' || body.confirm !== target.record.company)) {
-      return fail(400, `a real submit needs confirm: ${JSON.stringify(target.record.company ?? '')}`);
+      return failure(
+        400,
+        'submit-unconfirmed',
+        `a real submit needs the exact company name as confirmation: ${JSON.stringify(target.record.company ?? '')}`,
+      );
     }
 
     const args = [
@@ -306,7 +519,7 @@ export function createHandlers({
 
   function getJob(id) {
     const job = jobs.get(String(id));
-    return job ? json(200, jobView(job)) : fail(404, `no job ${JSON.stringify(String(id))}`);
+    return job ? json(200, jobView(job)) : NOT_FOUND('job');
   }
 
   function getStatic() {
@@ -319,32 +532,68 @@ export function createHandlers({
 
   function handle(request = {}) {
     const method = String(request.method ?? 'GET').toUpperCase();
-    const pathname = String(request.path ?? '/').split('?')[0];
+    const rawPath = String(request.path ?? '/');
+    const pathname = rawPath.split('?')[0];
+    const params = request.query instanceof URLSearchParams ? request.query : new URLSearchParams(rawPath.split('?')[1] ?? '');
     const body = request.body;
+    const notAllowed = () => failure(405, 'usage', 'that method is not accepted by this route');
 
     try {
       if (pathname === '/' || pathname === '/index.html') {
-        return method === 'GET' ? getStatic() : fail(405, 'method not allowed');
+        return method === 'GET' ? getStatic() : notAllowed();
       }
-      if (pathname === '/api/board') return method === 'GET' ? getBoard() : fail(405, 'method not allowed');
-      if (pathname === '/api/answers') return method === 'POST' ? postAnswers(body) : fail(405, 'method not allowed');
-      if (pathname === '/api/status') return method === 'POST' ? postStatus(body) : fail(405, 'method not allowed');
-      if (pathname === '/api/prepare') return method === 'POST' ? postPrepare(body) : fail(405, 'method not allowed');
-      if (pathname === '/api/apply') return method === 'POST' ? postApply(body) : fail(405, 'method not allowed');
-      if (pathname === '/api/log') return method === 'GET' ? getLog() : fail(405, 'method not allowed');
+      if (pathname === '/api/board') return method === 'GET' ? getBoard() : notAllowed();
+      if (pathname === '/api/today') return method === 'GET' ? getToday() : notAllowed();
+      if (pathname === '/api/postings') return method === 'GET' ? getPostings(params) : notAllowed();
+      if (pathname === '/api/sessions') return method === 'GET' ? getSessions() : notAllowed();
+      if (pathname === '/api/answers') return method === 'POST' ? postAnswers(body) : notAllowed();
+      if (pathname === '/api/status') return method === 'POST' ? postStatus(body) : notAllowed();
+      if (pathname === '/api/prepare') return method === 'POST' ? postPrepare(body) : notAllowed();
+      if (pathname === '/api/apply') return method === 'POST' ? postApply(body) : notAllowed();
+      if (pathname === '/api/log') return method === 'GET' ? getLog() : notAllowed();
+
+      const application = pathname.match(/^\/api\/application\/([^/]+)$/);
+      if (application) {
+        const key = decodeURIComponent(application[1]);
+        return method === 'GET' ? getApplication(key) : notAllowed();
+      }
+
+      const screenshot = pathname.match(/^\/api\/screenshot\/([^/]+)$/);
+      if (screenshot) {
+        return method === 'GET' ? getScreenshot(decodeURIComponent(screenshot[1])) : notAllowed();
+      }
+
+      const letter = pathname.match(/^\/api\/letter\/([^/]+)$/);
+      if (letter) {
+        const key = decodeURIComponent(letter[1]);
+        if (method === 'GET') return getLetter(key);
+        if (method === 'POST') return postLetter(key, body);
+        return notAllowed();
+      }
 
       const job = pathname.match(/^\/api\/job\/([^/]+)$/);
-      if (job) return method === 'GET' ? getJob(decodeURIComponent(job[1])) : fail(405, 'method not allowed');
+      if (job) return method === 'GET' ? getJob(decodeURIComponent(job[1])) : notAllowed();
 
-      return fail(404, 'not found');
+      return failure(404, 'record-not-found', 'that screen or address does not exist');
     } catch (error) {
-      return fail(500, error.message);
+      if (error?.code && CODES[error.code]) {
+        return failure(error.code === 'letter-invalid' ? 400 : 404, error.code, error.message);
+      }
+      return failure(500, 'store-corrupt', 'the server could not read its data');
     }
   }
 
   return {
     handle,
+    openStream,
     getBoard,
+    getToday,
+    getPostings,
+    getSessions,
+    getApplication,
+    getLetter,
+    getScreenshot,
+    postLetter,
     postAnswers,
     postStatus,
     postPrepare,

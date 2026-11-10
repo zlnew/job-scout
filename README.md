@@ -23,10 +23,17 @@ scripted or stored by this harness.
 npm run ui                      # http://127.0.0.1:4780
 ```
 
-A loopback-only page for the ledger, unanswered gaps, and the prepare/apply jobs. Browser work is
-serialised through one queue (`GET /api/job/:id` reports progress); a real submit requires
-`dryRun: false` plus the stored company name as confirmation. The server refuses any `--host` that
-is not loopback and never reads cookies or the browser profile.
+A loopback-only page with four screens, each answering one question: **Today** (what needs you
+now, due follow-ups, session health, recent runs), **Postings** (score with its arithmetic, source
+and seen-on badges, filters, one action per row), **Application detail** (timeline, answers with
+provenance, refusals with their fix, screenshot, and a letter editor that appends a revision), and
+**Connections & rules** (sessions per source with a re-auth command, blocked topics, scoring
+thresholds, comp band, and what the agent never does). The page reads `GET /api/today`,
+`/api/postings`, `/api/application/:key`, `/api/letter/:key`, and `/api/sessions`, and updates live
+from the `/api/stream` server-sent event feed; `/api/job/:id` stays for compatibility. Browser work
+is serialised through one queue, and a real submit requires `dryRun: false` plus the stored company
+name as confirmation. The server refuses any `--host` that is not loopback and never reads cookie
+contents or the browser profile.
 
 ## Answer bank (`data/profile.json`)
 

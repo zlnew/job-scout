@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test, { after } from 'node:test';
 import { identityKey, loadProfile } from '../core/guard.mjs';
+import { appendRevision } from '../core/letters.mjs';
 import { createHandlers } from '../ui/handlers.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -17,6 +18,7 @@ function fixture(records) {
     storePath: join(dir, 'applications.json'),
     profilePath: join(dir, 'profile.json'),
     eventsPath: join(dir, 'events.jsonl'),
+    lettersRoot: join(dir, 'letters'),
   };
   writeFileSync(paths.storePath, `${JSON.stringify({ updated: '2026-11-10', applications: records }, null, 2)}\n`);
   writeFileSync(paths.profilePath, readFileSync(join(ROOT, 'data/profile.json')));
@@ -233,4 +235,155 @@ test('static route serves the page as text/html', () => {
   assert.equal(response.status, 200);
   assert.match(response.headers['content-type'], /^text\/html/);
   assert.match(response.body.toLowerCase(), /<!doctype html>/);
+});
+
+// ---- new screens ---------------------------------------------------------
+
+const daysAgo = (days) => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+
+const writeEvents = (paths, events) => {
+  writeFileSync(paths.eventsPath, `${events.map((event) => JSON.stringify(event)).join('\n')}\n`);
+};
+
+test('/api/today lists a blocked record and a submitted record whose follow-up is due', () => {
+  const blocked = record({ company: 'Blocked Co', status: 'blocked', blockedReason: 'screening question has no usable answer', linkedinId: '11' });
+  const due = record({ company: 'Due Co', status: 'submitted', applied: daysAgo(10), linkedinId: '12' });
+  const fresh = record({ company: 'Fresh Co', status: 'submitted', applied: daysAgo(1), linkedinId: '13' });
+  const paths = fixture([blocked, due, fresh]);
+  const handlers = createHandlers(paths);
+
+  const response = handlers.handle({ method: 'GET', path: '/api/today' });
+  assert.equal(response.status, 200);
+  const today = JSON.parse(response.body);
+  assert.ok(today.needsYou.some((row) => row.company === 'Blocked Co' && row.kind === 'blocked'));
+  assert.ok(today.needsYou.every((row) => row.action && row.action.label), 'every need carries one action');
+  assert.deepEqual(today.followUpsDue.map((row) => row.company), ['Due Co']);
+  assert.ok(!today.followUpsDue.some((row) => row.company === 'Fresh Co'), 'a recent submit is not due yet');
+  assert.ok(Array.isArray(today.sessions) && today.sessions.length > 0, 'session health is part of Today');
+  assert.ok(Array.isArray(today.recent));
+});
+
+test('/api/postings filters by score and status and keeps score arithmetic in each row', () => {
+  const paths = fixture([
+    record({ company: 'High', status: 'shortlisted', score: 9, posted: '2026-01-02' }),
+    record({ company: 'Low', status: 'shortlisted', score: 4, posted: '2026-01-01', notes: 'IT vendor (-1)' }),
+    record({ company: 'Unscored', status: 'discovered', score: null, posted: '2026-01-03' }),
+    record({ company: 'Sent', status: 'submitted', score: 7, applied: '2026-01-01' }),
+  ]);
+  const handlers = createHandlers(paths);
+
+  const filtered = handlers.handle({ method: 'GET', path: '/api/postings?minScore=7' });
+  assert.equal(filtered.status, 200);
+  const high = JSON.parse(filtered.body);
+  assert.deepEqual(high.rows.map((row) => row.company), ['High', 'Sent']);
+
+  const byStatus = JSON.parse(handlers.handle({ method: 'GET', path: '/api/postings?status=shortlisted' }).body);
+  assert.deepEqual(byStatus.rows.map((row) => row.company), ['High', 'Low']);
+  assert.equal(byStatus.sources.length, 1);
+  assert.equal(byStatus.counts.submitted, 1);
+
+  const low = byStatus.rows.find((row) => row.company === 'Low');
+  assert.deepEqual(low.scoreBreakdown.chips[0], { label: 'IT vendor', points: -1, source: 'notes' });
+  assert.equal(low.scoreBreakdown.equals, true, 'the other chip names the remainder so the arithmetic adds up');
+  assert.equal(low.scoreBreakdown.total, 4, 'the visible arithmetic adds up to the stored score');
+  assert.equal(low.scoreBreakdown.chips.at(-1).label, 'other recorded points');
+  assert.equal(low.scoreBreakdown.chips.at(-1).points, 5);
+  for (const row of byStatus.rows) assert.ok(Array.isArray(row.scoreBreakdown.chips), 'every row carries its arithmetic');
+});
+
+test('/api/application returns ordered timeline, answers with provenance, and the current letter', () => {
+  const target = record({ company: 'Acme', role: 'Backend Engineer', status: 'submitted', applied: '2026-11-01', linkedinId: '321' });
+  const key = target.identityKey;
+  const paths = fixture([target]);
+  writeEvents(paths, [
+    { action: 'prepared', key, ts: '2026-11-01T08:00:00.000Z' },
+    { action: 'applied', key, ts: '2026-11-01T09:00:00.000Z', screenshot: 'screenshots/acme.png', letterRevision: 1 },
+  ]);
+  appendRevision(key, { text: 'Dear team', origin: 'generated' }, { root: paths.lettersRoot, company: 'Acme', role: 'Backend Engineer' });
+  const handlers = createHandlers(paths);
+
+  const response = handlers.handle({ method: 'GET', path: `/api/application/${key}` });
+  assert.equal(response.status, 200);
+  const detail = JSON.parse(response.body);
+  assert.deepEqual(detail.timeline.map((step) => step.action), ['prepared', 'applied']);
+  assert.equal(detail.timeline.at(-1).evidence.letterRevision, 1);
+  assert.ok(detail.answers.length > 0);
+  for (const answer of detail.answers) {
+    assert.ok(['confirmed', 'derived'].includes(answer.provenance.kind));
+    assert.match(answer.provenance.text, /confirmed by Maul|derived from career\.json/);
+  }
+  assert.equal(detail.letter.current.revision, 1);
+  assert.equal(detail.letter.current.text, 'Dear team');
+  assert.equal(detail.letter.revisions.length, 1);
+  assert.equal(detail.lastRun.action, 'applied');
+  assert.ok(Array.isArray(detail.lastRun.refusals));
+});
+
+test('POST /api/letter appends an edited revision and GET returns the new current', () => {
+  const target = record({ company: 'Acme', status: 'shortlisted', linkedinId: '654' });
+  const key = target.identityKey;
+  const paths = fixture([target]);
+  appendRevision(key, { text: 'Dear team', origin: 'generated' }, { root: paths.lettersRoot, company: 'Acme' });
+  const handlers = createHandlers(paths);
+
+  const rejected = handlers.handle({ method: 'POST', path: `/api/letter/${key}`, body: { text: '   ' } });
+  assert.equal(rejected.status, 400);
+  const refused = JSON.parse(rejected.body);
+  assert.equal(refused.code, 'letter-empty');
+  assert.equal(typeof refused.message, 'string');
+  assert.equal(typeof refused.fix, 'string');
+
+  const saved = handlers.handle({ method: 'POST', path: `/api/letter/${key}`, body: { text: 'Dear team, edited', note: 'tightened' } });
+  assert.equal(saved.status, 201);
+  assert.equal(JSON.parse(saved.body).revision, 2);
+
+  const current = JSON.parse(handlers.handle({ method: 'GET', path: `/api/letter/${key}` }).body);
+  assert.equal(current.current, 2);
+  assert.equal(current.text, 'Dear team, edited');
+  assert.equal(current.revisions.length, 2);
+  assert.equal(current.revisions.at(-1).origin, 'edited');
+  assert.equal(current.revisions.at(-1).note, 'tightened');
+});
+
+test('unknown application and letter keys return 404 with code, message, and fix', () => {
+  const handlers = createHandlers(fixture([]));
+  for (const path of ['/api/application/missing-key', '/api/letter/missing-key']) {
+    const response = handlers.handle({ method: 'GET', path });
+    assert.equal(response.status, 404);
+    const body = JSON.parse(response.body);
+    assert.equal(body.code, 'record-not-found');
+    assert.equal(typeof body.message, 'string');
+    assert.equal(typeof body.fix, 'string');
+  }
+});
+
+test('/api/stream writes frames for a job transition', async () => {
+  const spawn = () => {
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+    setImmediate(() => child.emit('close', 0));
+    return child;
+  };
+  const target = record({ company: 'Acme', status: 'prepared', linkedinId: '999' });
+  const paths = fixture([target]);
+  const handlers = createHandlers({ ...paths, spawn });
+
+  const frames = [];
+  const headers = [];
+  handlers.openStream({
+    writeHead: (status, values) => headers.push({ status, values }),
+    write: (frame) => frames.push(String(frame)),
+    on: () => {},
+  });
+
+  const started = handlers.handle({ method: 'POST', path: '/api/prepare', body: { id: '999' } });
+  assert.equal(started.status, 202);
+  await new Promise((resolvePromise) => setTimeout(resolvePromise, 20));
+
+  assert.equal(headers[0].status, 200);
+  assert.match(headers[0].values['content-type'], /^text\/event-stream/);
+  assert.ok(frames.some((frame) => frame.includes('event: hello')));
+  assert.ok(frames.some((frame) => frame.includes('event: job')));
+  assert.ok(frames.some((frame) => frame.includes('"state":"done"')), 'the finished job is pushed, not polled');
 });
