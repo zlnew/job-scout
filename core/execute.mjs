@@ -15,6 +15,14 @@ const OPTION_SELECTOR = '[role="option"]:visible, [role="listbox"] li:visible, u
 
 const escapeAttr = (value) => String(value).replaceAll('"', '\\"');
 
+// Words that carry no meaning in a question label, so word-based matching ignores them.
+const LABEL_STOPWORDS = new Set([
+  'who', 'what', 'have', 'with', 'your', 'the', 'and', 'for', 'you', 'does', 'this',
+  'that', 'are', 'was', 'were', 'of', 'to', 'in', 'on', 'by', 'form', 'please', 'all',
+]);
+
+const labelWords = (value) => String(value).toLowerCase().replaceAll(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+
 /** Cookie walls intercept clicks; accept one if it is blocking the way. Failures are ignored. */
 export async function dismissConsent(page) {
   for (const scope of ['[data-ui="cookie-consent"]', '#onetrust-banner-sdk', '[aria-label*="ookie" i]', '[class*="cookie" i]', '[role="dialog"]']) {
@@ -79,15 +87,25 @@ export async function dumpControls(page) {
 /** Required controls that are still blank, named as a human would see them. */
 export async function requiredEmptyControls(page) {
   return page.evaluate(() => {
-    const controls = [...document.querySelectorAll('input, select, textarea')];
-    return controls
+    const isAnswered = (el) => {
+      if (el.type === 'file') return Boolean(el.files?.length);
+      // A radio group is answered by any member: testing each radio alone reports
+      // the unchecked sibling of a group the applicant already answered.
+      if (el.type === 'radio') {
+        if (el.checked) return true;
+        if (el.name && document.querySelector(`input[name="${CSS.escape(el.name)}"]:checked`)) return true;
+        const group = el.closest('fieldset, [role="radiogroup"]');
+        return Boolean(group?.querySelector('[role="radio"][aria-checked="true"]'));
+      }
+      if (el.type === 'checkbox') return el.checked;
+      return Boolean(String(el.value ?? '').trim());
+    };
+
+    const names = [...document.querySelectorAll('input, select, textarea')]
       .filter((el) => el.required || el.getAttribute('aria-required') === 'true')
-      .filter((el) => {
-        if (el.type === 'file') return !el.files?.length;
-        if (el.type === 'checkbox' || el.type === 'radio') return !el.checked;
-        return !String(el.value ?? '').trim();
-      })
+      .filter((el) => !isAnswered(el))
       .map((el) => el.name || el.id || el.getAttribute('aria-label') || el.type);
+    return [...new Set(names)];
   });
 }
 
@@ -130,6 +148,30 @@ async function locate(page, key) {
 
     return { locator: locator.first(), via: `${via} (non-control)`, count };
   }
+
+  // A live label can wrap the question in extra wording ("State the names of
+  // employees in our company who have family ties with your relatives!"), so the
+  // map's shorter label is not a substring of it. Match on every significant word
+  // instead, and only when exactly one control matches: ambiguity is a miss, not
+  // a guess.
+  const words = labelWords(key).filter((word) => word.length > 2 && !LABEL_STOPWORDS.has(word));
+  if (words.length > 0) {
+    const index = await page
+      .evaluate((wanted) => {
+        const text = (el) => {
+          const ids = (el.getAttribute('aria-labelledby') ?? '').split(/\s+/).filter(Boolean);
+          const labelled = ids.map((id) => document.getElementById(id)?.innerText ?? '').join(' ');
+          const explicit = el.id ? (document.querySelector(`label[for="${CSS.escape(el.id)}"]`)?.innerText ?? '') : '';
+          const wrapper = el.closest('label')?.innerText ?? '';
+          return `${labelled} ${explicit} ${wrapper} ${el.getAttribute('aria-label') ?? ''}`.toLowerCase();
+        };
+        const nodes = [...document.querySelectorAll('input, select, textarea')];
+        const hits = nodes.map((el, at) => [el, at]).filter(([el]) => wanted.every((word) => text(el).includes(word)));
+        return hits.length === 1 ? hits[0][1] : -1;
+      }, words)
+      .catch(() => -1);
+    if (index >= 0) return { locator: page.locator('input, select, textarea').nth(index), via: 'label words', count: 1 };
+  }
   return null;
 }
 
@@ -148,45 +190,153 @@ async function isCombobox(locator) {
   try {
     return await locator.evaluate((el) => {
       if (el.readOnly === true && el.getAttribute('role') === 'combobox') return true;
-      if (el.closest('[role="combobox"]')) return true;
-      // Last resort: the library wrapper carries the widget name in its class.
-      return Boolean(el.closest('[class*="select" i]'));
+      if (el.getAttribute('role') === 'combobox') return true;
+      if (el.getAttribute('aria-haspopup') === 'listbox') return true;
+      // The library wrapper names the widget; a class containing "select" is not a
+      // signal, because intl-tel-input's "iti--has-country-selector" phone wrapper
+      // matched it and turned the phone input into a combobox that never opened.
+      if (el.closest('[data-input-type="select"]')) return true;
+      return Boolean(el.closest('[role="combobox"]'));
     });
   } catch {
     return false;
   }
 }
 
+/** The option list a widget owns, or null when it opens one elsewhere on the page. */
+async function ownedList(page, locator) {
+  const id = await locator
+    .evaluate((el) => {
+      const ids = `${el.getAttribute('aria-controls') ?? ''} ${el.getAttribute('aria-owns') ?? ''}`.trim();
+      return ids.split(/\s+/).find((value) => value && document.getElementById(value)) ?? '';
+    })
+    .catch(() => '');
+  return id ? page.locator(`[id="${escapeAttr(id)}"]`) : null;
+}
+
+const optionTexts = async (options) =>
+  (await options.allInnerTexts()).map((text) => text.replace(/\s+/g, ' ').trim());
+
+/** Exact, then case-insensitive, then prefix, then substring. */
+function bestOption(texts, wanted) {
+  const lower = wanted.toLowerCase();
+  let index = texts.findIndex((text) => text === wanted);
+  if (index < 0) index = texts.findIndex((text) => text.toLowerCase() === lower);
+  if (index < 0) index = texts.findIndex((text) => text.toLowerCase().startsWith(lower));
+  if (index < 0) index = texts.findIndex((text) => text.toLowerCase().includes(lower));
+  return index;
+}
+
 /**
  * Open a combobox and click the option that best matches `value`: exact text,
- * then case-insensitive, then substring. Throws when no option matches so the
- * caller reports the field instead of leaving the dropdown half-set.
+ * then case-insensitive, then prefix, then substring. Throws when no option
+ * matches so the caller reports the field instead of leaving the dropdown
+ * half-set.
  */
 async function fillCombobox(page, locator, value) {
   const before = await comboState(locator);
   const wanted = String(value).trim();
 
   await locator.click({ timeout: FILL_TIMEOUT });
-  const options = page.locator(OPTION_SELECTOR);
   // Only the opened list is visible; a page-wide selector would otherwise pick a
-  // hidden option from another combobox and time out waiting for it.
+  // hidden option from another combobox and time out waiting for it. Prefer the
+  // listbox this widget owns when it declares one.
+  const list = await ownedList(page, locator);
+  const options = list ? list.locator('[role="option"]') : page.locator(OPTION_SELECTOR);
   await options.first().waitFor({ state: 'visible', timeout: OPTION_TIMEOUT });
 
-  const texts = (await options.allInnerTexts()).map((text) => text.replace(/\s+/g, ' ').trim());
-  const find = (matches) => texts.findIndex(matches);
-  let index = find((text) => text === wanted);
-  if (index < 0) index = find((text) => text.toLowerCase() === wanted.toLowerCase());
-  if (index < 0) index = find((text) => text.toLowerCase().includes(wanted.toLowerCase()));
-  if (index < 0) throw new Error(`no matching option: "${wanted}"`);
+  let texts = await optionTexts(options);
+  let index = bestOption(texts, wanted);
+  if (index < 0) {
+    // A long or virtualised list mounts its tail only once it is scrolled.
+    await options.last().scrollIntoViewIfNeeded().catch(() => {});
+    await page.waitForTimeout(300);
+    texts = await optionTexts(options);
+    index = bestOption(texts, wanted);
+  }
+  if (index < 0) throw new Error(`no matching option: "${wanted}" (the list offers: ${texts.join(' / ')})`);
+
+  // Workable restores the applicant's draft, so the widget can already hold the
+  // right option. Clicking it again leaves the value untouched, which the old
+  // check read as a failure on every prefilled question.
+  if (before.value.trim().toLowerCase() === texts[index].trim().toLowerCase()) {
+    await page.keyboard.press('Escape').catch(() => {});
+    return;
+  }
 
   await options.nth(index).click({ timeout: FILL_TIMEOUT });
   // React applies the selection after the click handler returns, not before.
   await page.waitForTimeout(150);
 
   const after = await comboState(locator);
-  if (after.value === before.value && after.active === before.active) {
-    throw new Error(`combobox value did not change after selecting "${wanted}"`);
+  const applied = after.value.trim().toLowerCase() === texts[index].trim().toLowerCase();
+  if (applied || after.value !== before.value || after.active !== before.active) return;
+  throw new Error(`combobox value did not change after selecting "${wanted}"`);
+}
+
+/** Where a radio group lives: Workable wraps consent in a fieldset/role=radiogroup. */
+async function radioGroupFor(locator) {
+  let node = locator;
+  for (let depth = 0; depth < 4; depth += 1) {
+    const role = await node.evaluate((el) => el.getAttribute('role')).catch(() => null);
+    if (role === 'radiogroup') return node;
+    node = node.locator('xpath=..');
+    const tag = await node.evaluate((el) => el.tagName?.toLowerCase()).catch(() => null);
+    if (tag === 'fieldset') return node;
   }
+  return null;
+}
+
+/** A consent question is a radio group, not a text control: pick the yes/no wording. */
+async function fillRadioGroup(page, locator, value) {
+  const group = await radioGroupFor(locator);
+  if (!group) return false;
+
+  // The clickable is a role=radio wrapper; a plain radio group has only inputs.
+  let radios = group.locator('[role="radio"]');
+  if ((await radios.count()) === 0) radios = group.locator('input[type="radio"]');
+
+  const matches = (text) => {
+    if (value === true) return /^(yes|true|agree|accept)\b/i.test(text);
+    if (value === false) return /^(no|false|decline|disagree)\b/i.test(text);
+    return text.toLowerCase() === String(value).trim().toLowerCase();
+  };
+
+  const count = await radios.count();
+  for (let index = 0; index < count; index += 1) {
+    const radio = radios.nth(index);
+    const text = (await radio.innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
+    if (!matches(text)) continue;
+    await radio.click({ timeout: FILL_TIMEOUT });
+    await page.waitForTimeout(150);
+    const answered = await group.evaluate((el) =>
+      Boolean(el.querySelector('[role="radio"][aria-checked="true"], input[type="radio"]:checked')),
+    );
+    if (!answered) throw new Error(`the radio group did not take "${text}"`);
+    return true;
+  }
+  throw new Error(`no "${String(value)}" option in the radio group (offers: ${count})`);
+}
+
+/**
+ * react-datepicker ignores a value set programmatically and keeps only keystrokes;
+ * its placeholder names the order the widget expects (MM/DD/YYYY here).
+ */
+async function fillDate(locator, placeholder, value) {
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value).trim());
+  if (!iso) return null;
+  const order = String(placeholder ?? '').toUpperCase();
+  const typed = order.includes('MM/DD/YYYY') ? `${iso[2]}/${iso[3]}/${iso[1]}`
+    : order.includes('DD/MM/YYYY') ? `${iso[3]}/${iso[2]}/${iso[1]}`
+      : null;
+  if (typed === null) return null;
+
+  await locator.click({ timeout: FILL_TIMEOUT });
+  await locator.press('ControlOrMeta+a');
+  await locator.press('Backspace');
+  await locator.pressSequentially(typed, { delay: 30 });
+  if (!String(await locator.inputValue()).trim()) throw new Error(`the date field rejected ${typed}`);
+  return typed;
 }
 
 /**
@@ -210,6 +360,8 @@ export async function fillForm(page, { fields, fieldsDir }) {
     const meta = await found.locator.evaluate((el) => ({
       tag: el.tagName.toLowerCase(),
       type: (el.getAttribute('type') ?? '').toLowerCase(),
+      role: el.getAttribute('role') ?? '',
+      placeholder: el.getAttribute('placeholder') ?? '',
     }));
 
     // Never trigger navigation or sending from the filler.
@@ -220,7 +372,10 @@ export async function fillForm(page, { fields, fieldsDir }) {
 
     let as = meta.tag === 'select' ? 'select' : meta.type || meta.tag;
     try {
-      if (meta.tag === 'select') {
+      if (meta.role === 'radiogroup') {
+        await fillRadioGroup(page, found.locator, value);
+        as = 'radio';
+      } else if (meta.tag === 'select') {
         try {
           await found.locator.selectOption({ label: String(value) });
         } catch {
@@ -235,6 +390,8 @@ export async function fillForm(page, { fields, fieldsDir }) {
         // Before `fill()`: a readonly combobox times out on fill and never takes the value.
         await fillCombobox(page, found.locator, value);
         as = 'combobox';
+      } else if ((await fillDate(found.locator, meta.placeholder, value)) !== null) {
+        as = 'date';
       } else {
         await found.locator.fill(String(value), { timeout: FILL_TIMEOUT });
       }

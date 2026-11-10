@@ -17,6 +17,17 @@ node scripts/login.mjs https://www.linkedin.com/login   # log in by hand, close 
 session cookies). Log in once per site; later runs reuse the session. Credentials are never
 scripted or stored by this harness.
 
+## Control UI
+
+```bash
+npm run ui                      # http://127.0.0.1:4780
+```
+
+A loopback-only page for the ledger, unanswered gaps, and the prepare/apply jobs. Browser work is
+serialised through one queue (`GET /api/job/:id` reports progress); a real submit requires
+`dryRun: false` plus the stored company name as confirmation. The server refuses any `--host` that
+is not loopback and never reads cookies or the browser profile.
+
 ## Answer bank (`data/profile.json`)
 
 `data/profile.json` is the machine-readable answer bank: every answer is `{ value, source, scope }`

@@ -22,20 +22,39 @@ const CONTROLS = [
   // which sits first in the DOM; label-based filling skips the button and leaves
   // the number empty, so the guard refuses this form instead of sending it.
   { label: 'Phone', path: 'identity.phone' },
-  { label: 'Address', path: 'identity.location' },
-  { label: 'City', path: 'identity.city' },
+  // Address, city and website are not Workable controls: neither the live form nor
+  // the saved snapshot renders them. Mapping them only manufactured fields the
+  // filler could never fill, which the guard then refused as unfilled.
   { label: 'LinkedIn URL', path: 'identity.links.linkedin' },
-  { label: 'Website', path: 'identity.links.site' },
   { label: 'Resume', path: 'work.resumePath', file: true },
   // Screening questions render as readonly comboboxes (the fill step now clicks an
   // option). core/screening.mjs owns the profile key; `ask` is only the identity
   // to report when the registry does not know the label yet.
   { label: 'Nationality', ask: 'work.citizenship' },
   { label: 'Notice Period', ask: 'work.noticePeriod' },
-  { label: 'Work Eligibility', ask: 'work.authorizedIn' },
+  // Workable asks whether the applicant may work in the posting's country, and its
+  // options are citizenship / permit / no — not a country name. A confirmed
+  // citizenship equal to the authorised country answers the first option; anything
+  // else falls through to the registry and stays a question.
+  {
+    label: 'Work Eligibility',
+    ask: 'work.authorizedIn',
+    derive: (profile) => {
+      const citizenship = readAnswer(profile, 'work.citizenship');
+      return citizenship !== null && citizenship === readAnswer(profile, 'work.authorizedIn')
+        ? 'Yes, by way of Citizenship'
+        : undefined;
+    },
+  },
   { label: 'Total Working Experience', ask: 'titles.yearsExperience' },
   { label: 'University', ask: 'education[0].school' },
-  { label: 'Education Degree', ask: 'education[0].degree' },
+  // Indonesian postings offer strata (S1 bachelor, S2 master, D3/D4 diploma), and
+  // the profile's degree name states the tier; the raw degree string never matches.
+  {
+    label: 'Education Degree',
+    ask: 'education[0].degree',
+    derive: (profile) => degreeTier(readAnswer(profile, 'education[0].degree')),
+  },
   { label: 'GPA', ask: 'education[0].gpa' },
   { label: 'Year of Graduation', ask: 'education[0].end' },
 
@@ -77,6 +96,19 @@ const CONTROLS = [
     reason: 'a data-processing consent the applicant must give personally, not the agent',
   },
 ];
+
+const DEGREE_TIERS = [
+  [/\b(s2|m\.?sc|m\.?eng|master|magister)\b/i, 'S2'],
+  [/\b(s1|b\.?sc|b\.?eng|bachelor|sarjana|s\.?kom)\b/i, 'S1'],
+  [/\b(d4|d\.?iv)\b/i, 'D4'],
+  [/\b(d3|d\.?iii)\b/i, 'D3'],
+];
+
+/** The stratum a degree name states, in the vocabulary an Indonesian posting offers. */
+function degreeTier(degree) {
+  if (typeof degree !== 'string') return undefined;
+  return DEGREE_TIERS.find(([pattern]) => pattern.test(degree))?.[1];
+}
 
 export function detect(url) {
   let parsed;

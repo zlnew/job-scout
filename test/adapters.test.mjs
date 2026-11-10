@@ -221,6 +221,26 @@ test('buildMap narrows to the controls a posting actually renders', () => {
   assert.deepEqual(map.blocked, []);
 });
 
+test('option vocabularies are derived from confirmed answers, not from the raw wording', () => {
+  const map = workable.buildMap(PROFILE);
+
+  // An Indonesian posting offers degree strata; "B.Sc. Software Engineering" states S1.
+  assert.equal(map.fields['Education Degree'], 'S1');
+  // "Authorized in Indonesia" + Indonesian citizenship answers the citizenship option.
+  assert.equal(map.fields['Work Eligibility'], 'Yes, by way of Citizenship');
+
+  const master = structuredClone(PROFILE);
+  master.education.value[0].degree = 'M.Sc. Software Engineering';
+  assert.equal(workable.buildMap(master).fields['Education Degree'], 'S2');
+
+  // Without an authorised country there is no citizenship claim to derive.
+  const abroad = structuredClone(PROFILE);
+  delete abroad.work.authorizedIn;
+  const foreign = workable.buildMap(abroad);
+  assert.ok(!('Work Eligibility' in foreign.fields), 'no citizenship answer is invented');
+  assert.ok(foreign.questions.some((question) => question.label === 'Work Eligibility'));
+});
+
 test('fillForm fills the saved snapshot from the map and never submits', async () => {
   const page = await openSnapshot();
   const map = workable.buildMap(PROFILE);

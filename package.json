@@ -8,6 +8,7 @@
     "fill": "node scripts/fill.mjs",
     "prepare": "node cli/prepare.mjs",
     "apply": "node cli/apply.mjs",
+    "ui": "node ui/server.mjs",
     "test": "node --test test/*.test.mjs",
     "sweep": "node scripts/sweep.mjs",
     "board": "node scripts/board.mjs",

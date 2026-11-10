@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>job-apply control</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #101214;
+    --panel: #181b1f;
+    --line: #2a2f36;
+    --text: #e7e9ec;
+    --muted: #9aa3ad;
+    --accent: #7cc4ff;
+    --ok: #74d99f;
+    --warn: #f0b35f;
+    --bad: #ff8b8b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+  h1 { font-size: 20px; margin: 0; font-weight: 600; }
+  h2 { font-size: 14px; margin: 0 0 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
+  .chip b { color: var(--accent); margin-right: 6px; }
+  button {
+    background: #232830; color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.primary { border-color: #3f6c8f; background: #1d3a4e; }
+  button.danger { border-color: #7a3d3d; background: #3a2020; color: #ffd7d7; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+  tbody tr:hover { background: #1d2127; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); }
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .gaps { display: grid; gap: 10px; }
+  .gap { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.4fr) auto; gap: 10px; align-items: center; }
+  .gap .label { font-weight: 500; }
+  .gap .reason { color: var(--muted); font-size: 12px; }
+  .gap .key { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--muted); }
+  input {
+    width: 100%; background: #0d0f12; color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 7px 9px; font: inherit;
+  }
+  input:focus { outline: none; border-color: var(--accent); }
+  pre {
+    margin: 0; padding: 12px; background: #0b0d10; border: 1px solid var(--line); border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+    max-height: 320px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+  }
+  #status { min-height: 20px; color: var(--muted); font-size: 13px; }
+  #status.bad { color: var(--bad); }
+  #status.good { color: var(--ok); }
+  .empty { color: var(--muted); padding: 8px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>job-apply control</h1>
+    <div class="actions">
+      <button id="refresh" class="primary">Refresh</button>
+    </div>
+  </header>
+
+  <div id="counts" class="chips"></div>
+
+  <section class="panel">
+    <h2>Unanswered gaps</h2>
+    <div id="gaps" class="gaps"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Applications</h2>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th class="num">Score</th>
+            <th>Company</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Applied</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="records"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Browser job</h2>
+    <pre id="job">No job running.</pre>
+  </section>
+
+  <section class="panel">
+    <h2>Event log</h2>
+    <pre id="log">Loading...</pre>
+  </section>
+
+  <div id="status"></div>
+</div>
+
+<script>
+  const counts = document.getElementById('counts');
+  const gaps = document.getElementById('gaps');
+  const records = document.getElementById('records');
+  const jobPane = document.getElementById('job');
+  const logPane = document.getElementById('log');
+  const statusLine = document.getElementById('status');
+
+  function status(message, kind) {
+    statusLine.textContent = message;
+    statusLine.className = kind ?? '';
+  }
+
+  async function api(path, options) {
+    const response = await fetch(path, {
+      headers: { 'content-type': 'application/json' },
+      ...options,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || response.statusText);
+    return data;
+  }
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function renderCounts(value) {
+    counts.textContent = '';
+    const entries = Object.entries(value).sort((a, b) => b[1] - a[1]);
+    if (entries.length === 0) {
+      counts.append(el('span', 'chip muted', 'no records'));
+      return;
+    }
+    for (const [name, count] of entries) {
+      const chip = el('span', 'chip');
+      const number = el('b', '', String(count));
+      chip.append(number, document.createTextNode(name));
+      counts.append(chip);
+    }
+  }
+
+  function scalableValue(raw) {
+    if (raw === 'true') return true;
+    if (raw === 'false') return false;
+    if (/^-?\d+(?:\.\d+)?$/.test(raw)) return Number(raw);
+    return raw;
+  }
+
+  function renderGaps(items) {
+    gaps.textContent = '';
+    if (items.length === 0) {
+      gaps.append(el('div', 'empty', 'No unanswered questions.'));
+      return;
+    }
+    for (const gap of items) {
+      const row = el('div', 'gap');
+      const meta = el('div');
+      meta.append(el('div', 'label', gap.label));
+      meta.append(el('div', 'reason', gap.reason));
+      meta.append(el('div', 'key', gap.key));
+
+      const input = el('input');
+      input.placeholder = 'value (true/false or number are converted)';
+      input.setAttribute('aria-label', 'Answer for ' + gap.label);
+
+      const save = el('button', 'primary', 'Save');
+      save.addEventListener('click', async () => {
+        const raw = input.value.trim();
+        if (raw === '') {
+          input.focus();
+          return;
+        }
+        save.disabled = true;
+        try {
+          const result = await api('/api/answers', {
+            method: 'POST',
+            body: JSON.stringify({ key: gap.key, value: scalableValue(raw) }),
+          });
+          renderGaps(result.gaps);
+          status('Saved ' + gap.label, 'good');
+          loadLog();
+        } catch (error) {
+          status(error.message, 'bad');
+        } finally {
+          save.disabled = false;
+        }
+      });
+
+      row.append(meta, input, save);
+      gaps.append(row);
+    }
+  }
+
+  async function runJob(path, payload) {
+    jobPane.textContent = 'Queued...';
+    try {
+      const { job } = await api(path, { method: 'POST', body: JSON.stringify(payload) });
+      for (;;) {
+        const state = await api('/api/job/' + encodeURIComponent(job));
+        jobPane.textContent = 'state: ' + state.state + '\n\n' + (state.output || '(no output yet)');
+        if (state.state === 'done' || state.state === 'error') {
+          status(state.state === 'done' ? 'Job finished.' : 'Job failed; see output.', state.state === 'done' ? 'good' : 'bad');
+          load();
+          loadLog();
+          return;
+        }
+        await new Promise((done) => setTimeout(done, 1000));
+      }
+    } catch (error) {
+      jobPane.textContent = error.message;
+      status(error.message, 'bad');
+    }
+  }
+
+  function renderRecords(items) {
+    records.textContent = '';
+    if (items.length === 0) {
+      const row = el('tr');
+      const cell = el('td', 'empty', 'No applications in the ledger.');
+      cell.colSpan = 6;
+      row.append(cell);
+      records.append(row);
+      return;
+    }
+
+    for (const record of items) {
+      const row = el('tr');
+      const id = record.linkedinId ?? record.identityKey;
+
+      row.append(el('td', 'num', record.score === null || record.score === undefined ? '-' : String(record.score)));
+      row.append(el('td', '', record.company ?? ''));
+      row.append(el('td', '', record.role ?? ''));
+      row.append(el('td', '', record.status ?? ''));
+      row.append(el('td', '', record.applied ?? record.resolvedAt ?? ''));
+
+      const actions = el('td');
+      const group = el('div', 'actions');
+
+      const prepare = el('button', '', 'Prepare');
+      prepare.addEventListener('click', () => runJob('/api/prepare', { id }));
+
+      const dry = el('button', '', 'Apply dry-run');
+      dry.addEventListener('click', () => runJob('/api/apply', { id, dryRun: true }));
+
+      const real = el('button', 'danger', 'Apply for real');
+      real.addEventListener('click', () => {
+        const typed = window.prompt('Type the company name exactly to submit for real:\n' + (record.company ?? ''));
+        if (typed === null) return;
+        if (typed !== record.company) {
+          status('Company name did not match; nothing was submitted.', 'bad');
+          return;
+        }
+        runJob('/api/apply', { id, dryRun: false, confirm: typed });
+      });
+
+      group.append(prepare, dry, real);
+      actions.append(group);
+      row.append(actions);
+      records.append(row);
+    }
+  }
+
+  async function loadLog() {
+    try {
+      const { lines } = await api('/api/log');
+      logPane.textContent = lines.length
+        ? lines.map((line) => line.raw ?? [line.ts ?? '', line.action ?? '', line.status ?? '', line.id ?? ''].join('  ')).join('\n')
+        : 'No events yet.';
+    } catch (error) {
+      logPane.textContent = error.message;
+    }
+  }
+
+  async function load() {
+    try {
+      const board = await api('/api/board');
+      renderCounts(board.counts);
+      renderGaps(board.gaps);
+      renderRecords(board.records);
+      status('Loaded ' + board.records.length + ' records.');
+    } catch (error) {
+      status(error.message, 'bad');
+    }
+  }
+
+  document.getElementById('refresh').addEventListener('click', () => {
+    load();
+    loadLog();
+  });
+
+  load();
+  loadLog();
+</script>
+</body>
+</html>
