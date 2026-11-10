@@ -14,6 +14,7 @@
     "sweep": "node scripts/sweep.mjs",
     "board": "node scripts/board.mjs",
     "cover": "node scripts/cover.mjs",
+    "letter": "node cli/letter.mjs",
     "export-cookies": "node scripts/export-cookies.mjs",
     "import-cookies": "node scripts/import-cookies.mjs",
     "scan": "node cli/scan.mjs"

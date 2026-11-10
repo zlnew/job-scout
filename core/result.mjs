@@ -28,6 +28,22 @@ export const CODES = Object.freeze({
     message: 'every check passed',
     fix: 'no action needed',
   },
+  'letters-listed': {
+    message: 'the letter list is ready',
+    fix: 'open an application to read or edit its letter',
+  },
+  'letter-shown': {
+    message: 'the letter revision is shown',
+    fix: 'run with --generate or --set <file> to add a revision',
+  },
+  'letter-generated': {
+    message: 'a new generated revision was stored',
+    fix: 'review it, then apply with that revision',
+  },
+  'letter-edited': {
+    message: 'your edited revision was stored',
+    fix: 'review it, then apply with that revision',
+  },
 
   // Refusals and failures.
   usage: {
@@ -97,6 +113,22 @@ export const CODES = Object.freeze({
   'store-schema': {
     message: 'the data file schema is not supported by this build',
     fix: 'run node cli/doctor.mjs and restore the matching schema from data/backups',
+  },
+  'letter-not-found': {
+    message: 'no letter is stored for that application',
+    fix: 'run: node cli/letter.mjs --id <id> --generate --why "…"',
+  },
+  'letter-revision-not-found': {
+    message: 'that letter revision does not exist',
+    fix: 'open the application letter in Postings to see its revisions',
+  },
+  'letter-empty': {
+    message: 'a letter revision needs text',
+    fix: 'pass a file with the letter text: --set <file>',
+  },
+  'letter-invalid': {
+    message: 'the letter store refused that revision',
+    fix: 'use origin "generated" or "edited" and a real application identity',
   },
 });
 
