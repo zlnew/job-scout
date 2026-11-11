@@ -22,6 +22,8 @@ import {
   getPosting,
   upsertPostings,
   upsertApplication,
+  listProfileFields,
+  setProfileFields,
 } from '../lib/db.mjs';
 import { scoreJob } from '../lib/score.mjs';
 import { scanFungsi, createGmailDraft } from '../lib/sources.mjs';
@@ -37,6 +39,85 @@ const OPEN = new Set(['to-apply', 'drafted', 'applied', 'replied', 'interview'])
 const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
 const EMAIL_IN_TEXT = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/;
 const DRAFT_NOTICE = 'Open Gmail and press send — this tool never sends.';
+
+/** The settings page, grouped for a human. Paths are the profile_fields keys. */
+const SETTINGS_GROUPS = [
+  {
+    title: 'Personal',
+    fields: [
+      { path: 'identity.fullName', label: 'Full name', kind: 'text' },
+      { path: 'identity.firstName', label: 'First name', kind: 'text' },
+      { path: 'identity.lastName', label: 'Last name', kind: 'text' },
+      { path: 'identity.email', label: 'Email', kind: 'text' },
+      { path: 'identity.phone', label: 'Phone', kind: 'text' },
+      { path: 'identity.location', label: 'Location', kind: 'text' },
+      { path: 'identity.city', label: 'City', kind: 'text' },
+      { path: 'identity.country', label: 'Country', kind: 'text' },
+      { path: 'identity.links.site', label: 'Website', kind: 'text' },
+      { path: 'identity.links.github', label: 'GitHub', kind: 'text' },
+      { path: 'identity.links.linkedin', label: 'LinkedIn', kind: 'text' },
+      { path: 'identity.links.whatsapp', label: 'WhatsApp', kind: 'text' },
+    ],
+  },
+  {
+    title: 'Work',
+    fields: [
+      { path: 'work.noticePeriod', label: 'Notice period', kind: 'text' },
+      { path: 'work.startAvailability', label: 'Start availability', kind: 'text' },
+      { path: 'work.resumePath', label: 'Resume path', kind: 'text' },
+      { path: 'work.authorizedIn', label: 'Authorized in', kind: 'text' },
+      { path: 'work.citizenship', label: 'Citizenship', kind: 'text' },
+      { path: 'work.relocate', label: 'Willing to relocate', kind: 'bool' },
+      { path: 'work.applicationsLanguage', label: 'Applications language', kind: 'text' },
+    ],
+  },
+  {
+    title: 'Compensation',
+    fields: [
+      { path: 'compensation.currency', label: 'Currency', kind: 'text' },
+      { path: 'compensation.floor', label: 'Floor (IDR/month)', kind: 'number' },
+      { path: 'compensation.target', label: 'Target (IDR/month)', kind: 'number' },
+      { path: 'compensation.targetMin', label: 'Target minimum (IDR/month)', kind: 'number' },
+      { path: 'compensation.targetMax', label: 'Target maximum (IDR/month)', kind: 'number' },
+    ],
+  },
+  {
+    title: 'Titles',
+    fields: [
+      { path: 'titles.level', label: 'Level', kind: 'text' },
+      { path: 'titles.yearsExperience', label: 'Years of experience', kind: 'number' },
+      { path: 'titles.trackOrder', label: 'Track order (JSON)', kind: 'json' },
+      { path: 'titles.accepted', label: 'Accepted titles (comma separated)', kind: 'list' },
+      { path: 'titles.bareSoftwareEngineer', label: 'Bare "Software Engineer"', kind: 'text' },
+    ],
+  },
+  {
+    title: 'Skills',
+    fields: [
+      { path: 'skills.languages', label: 'Languages', kind: 'list' },
+      { path: 'skills.frameworks', label: 'Frameworks & libraries', kind: 'list' },
+      { path: 'skills.data', label: 'Data & infrastructure', kind: 'list' },
+      { path: 'skills.protocols', label: 'Protocols & APIs', kind: 'list' },
+      { path: 'skills.domain', label: 'Domain & practices', kind: 'list' },
+    ],
+  },
+];
+
+const ARRAY_SETTING_PATHS = new Set([
+  'titles.accepted',
+  'skills.languages',
+  'skills.frameworks',
+  'skills.data',
+  'skills.protocols',
+  'skills.domain',
+]);
+const NUMBER_SETTING_PATHS = new Set([
+  'compensation.floor',
+  'compensation.target',
+  'compensation.targetMin',
+  'compensation.targetMax',
+  'titles.yearsExperience',
+]);
 
 class HttpError extends Error {
   constructor(status, message) {
@@ -98,8 +179,13 @@ export function buildBoard({ postings = [], applications = [], profile = {} } = 
       return { posting: { ...posting, id }, verdict, app, contact: contactEmail(posting) };
     })
     .sort((a, b) => {
-      if (b.verdict.score !== a.verdict.score) return b.verdict.score - a.verdict.score;
-      return String(b.posting.published || '').localeCompare(String(a.posting.published || ''));
+      const byScore = (Number(b.verdict.score) || 0) - (Number(a.verdict.score) || 0);
+      if (byScore) return byScore;
+      const byDate = textCmp(b.posting.published, a.posting.published);
+      if (byDate) return byDate;
+      const byTitle = textCmp(a.posting.title, b.posting.title);
+      if (byTitle) return byTitle;
+      return textCmp(a.posting.id, b.posting.id);
     });
 }
 
@@ -107,6 +193,99 @@ export function summarize(rows = []) {
   const open = rows.filter(({ app }) => !app || !app.status || OPEN.has(app.status)).length;
   const apply = rows.filter(({ verdict }) => verdict.decision === 'apply').length;
   return { postings: rows.length, open, apply };
+}
+
+/** Pagination is server-side: only these page sizes are accepted. */
+export const PER_CHOICES = [25, 50, 100];
+export const DEFAULT_PER = 25;
+const DECISIONS = ['apply', 'review', 'skip', 'reject'];
+const SORTS = ['score', 'newest', 'title'];
+
+const text = (value) => String(value ?? '').trim();
+const textCmp = (a, b) => String(a ?? '').localeCompare(String(b ?? ''), 'en');
+
+/** Read the board query parameters, clamping every value to something valid. */
+export function parseBoardQuery(searchParams = new URLSearchParams()) {
+  const rawPer = Number.parseInt(text(searchParams.get('per')), 10);
+  const rawPage = Number.parseInt(text(searchParams.get('page')), 10);
+  const rawMin = Number.parseInt(text(searchParams.get('min')), 10);
+  const decision = text(searchParams.get('decision'));
+  const sort = text(searchParams.get('sort'));
+  const hide = text(searchParams.get('hideRejected')).toLowerCase();
+  return {
+    page: Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1,
+    per: PER_CHOICES.includes(rawPer) ? rawPer : DEFAULT_PER,
+    min: Number.isFinite(rawMin) ? Math.max(0, Math.min(100, rawMin)) : 0,
+    decision: DECISIONS.includes(decision) ? decision : '',
+    hideRejected: hide === '1' || hide === 'on' || hide === 'true',
+    q: text(searchParams.get('q')),
+    sort: SORTS.includes(sort) ? sort : 'score',
+  };
+}
+
+/** Apply the board filters before ordering and pagination. */
+export function filterRows(rows = [], { q = '', min = 0, decision = '', hideRejected = false } = {}) {
+  const needle = text(q).toLowerCase();
+  return rows.filter(({ posting, app, verdict }) => {
+    if (min > 0 && (Number(verdict.score) || 0) < min) return false;
+    if (decision && verdict.decision !== decision) return false;
+    if (hideRejected && (verdict.decision === 'reject' || app?.status === 'rejected')) return false;
+    if (needle) {
+      const hay = [posting.title, posting.company, posting.city, posting.description]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      if (!hay.includes(needle)) return false;
+    }
+    return true;
+  });
+}
+
+/** Stable ordering: score desc, published desc, title, then id as a final tiebreak. */
+export function sortRows(rows = [], sort = 'score') {
+  return [...rows].sort((a, b) => {
+    if (sort === 'newest') {
+      const byDate = textCmp(b.posting.published, a.posting.published);
+      if (byDate) return byDate;
+    }
+    if (sort === 'title') {
+      const byTitle = textCmp(a.posting.title, b.posting.title);
+      if (byTitle) return byTitle;
+    }
+    const byScore = (Number(b.verdict.score) || 0) - (Number(a.verdict.score) || 0);
+    if (byScore) return byScore;
+    const byDate = textCmp(b.posting.published, a.posting.published);
+    if (byDate) return byDate;
+    const byTitle = textCmp(a.posting.title, b.posting.title);
+    if (byTitle) return byTitle;
+    return textCmp(a.posting.id, b.posting.id);
+  });
+}
+
+/** Slice a stable, filtered list into one page and clamp out-of-range requests. */
+export function paginateRows(rows = [], page = 1, per = DEFAULT_PER) {
+  const size = PER_CHOICES.includes(per) ? per : DEFAULT_PER;
+  const total = rows.length;
+  const pageCount = Math.max(1, Math.ceil(total / size));
+  const wanted = Number.parseInt(page, 10);
+  const current = Math.min(Math.max(Number.isFinite(wanted) ? wanted : 1, 1), pageCount);
+  const start = (current - 1) * size;
+  return { page: current, per: size, total, pageCount, start, rows: rows.slice(start, start + size) };
+}
+
+/** Build a board URL that carries every active filter into the next page. */
+export function boardHref(filters = {}, overrides = {}) {
+  const f = { ...filters, ...overrides };
+  const params = new URLSearchParams();
+  if (f.q) params.set('q', f.q);
+  if (f.min) params.set('min', String(f.min));
+  if (f.decision) params.set('decision', f.decision);
+  if (f.hideRejected) params.set('hideRejected', '1');
+  if (f.sort && f.sort !== 'score') params.set('sort', f.sort);
+  if (f.per && f.per !== DEFAULT_PER) params.set('per', String(f.per));
+  if (f.page && f.page > 1) params.set('page', String(f.page));
+  const query = params.toString();
+  return query ? `/?${query}` : '/';
 }
 
 export function lastReportFile(dir = PATHS.out) {
@@ -141,6 +320,29 @@ function statusOptions(app) {
   ).join('');
 }
 
+/** Escaped, expandable detail block: full description plus the scorer's rationale. */
+function detailsHtml(posting, verdict) {
+  const description = String(posting.description ?? '').trim();
+  const preview = description.replace(/\s+/g, ' ').slice(0, 160);
+  const reasons = Array.isArray(verdict.reasons) ? verdict.reasons : [];
+  const flags = Array.isArray(verdict.flags) ? verdict.flags : [];
+  const list = (items, cls, empty) =>
+    items.length
+      ? `<ul class="${cls}">${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
+      : `<p class="${cls} is-empty">${empty}</p>`;
+  return `<p class="preview">${escapeHtml(preview)}${description.length > 160 ? '…' : ''}</p>
+<details class="details">
+  <summary class="details-toggle">Details</summary>
+  <div class="details-body">
+    <p class="desc">${description ? escapeHtml(description) : 'No description was published.'}</p>
+    <h3>Why this score</h3>
+    ${list(reasons, 'reasons', 'No reasons recorded.')}
+    <h3>Flags</h3>
+    ${list(flags, 'flags', 'No flags.')}
+  </div>
+</details>`;
+}
+
 function rowHtml({ posting, verdict, app, contact }) {
   const id = escapeHtml(posting.id);
   const title = escapeHtml(posting.title || '(untitled)');
@@ -155,15 +357,15 @@ function rowHtml({ posting, verdict, app, contact }) {
   const text = [posting.title, posting.company, posting.city].filter(Boolean).join(' ').toLowerCase();
   const address = contact || '';
 
-  return `<tr data-score="${Number(verdict.score) || 0}" data-decision="${escapeHtml(verdict.decision)}" data-status="${escapeHtml(app?.status || 'new')}" data-text="${escapeHtml(text)}">
-  <td class="c-score">${scoreCell(verdict)}</td>
-  <td class="c-title">${title}</td>
-  <td class="c-company">${company}</td>
-  <td class="c-where">${where}</td>
-  <td class="c-date">${posted}</td>
-  <td class="c-salary">${salary}</td>
-  <td class="c-status">${statusCell(app)}</td>
-  <td class="c-actions">
+  return `<tr class="posting" data-posting-id="${id}" data-score="${Number(verdict.score) || 0}" data-decision="${escapeHtml(verdict.decision)}" data-status="${escapeHtml(app?.status || 'new')}" data-text="${escapeHtml(text)}">
+  <td class="c-score" data-label="Score">${scoreCell(verdict)}</td>
+  <td class="c-title" data-label="Role"><span class="title-text">${title}</span>${detailsHtml(posting, verdict)}</td>
+  <td class="c-company" data-label="Company">${company}</td>
+  <td class="c-where" data-label="Where">${where}</td>
+  <td class="c-date" data-label="Posted">${posted}</td>
+  <td class="c-salary" data-label="Salary">${salary}</td>
+  <td class="c-status" data-label="Status">${statusCell(app)}</td>
+  <td class="c-actions" data-label="Actions">
     <div class="actions">
       ${openSite}
       <button type="button" class="btn" data-action="letter" data-id="${id}">Letter</button>
@@ -305,35 +507,6 @@ const CLIENT_JS = `
     return json;
   }
 
-  var rows = Array.prototype.slice.call(document.querySelectorAll('tbody tr[data-score]'));
-
-  function applyFilters() {
-    var q = $('#q').value.trim().toLowerCase();
-    var min = Number($('#min').value || 0);
-    var decision = $('#decision').value;
-    var hideRejected = $('#hideRejected').checked;
-    var shown = 0;
-    rows.forEach(function (row) {
-      var text = row.dataset.text || '';
-      var score = Number(row.dataset.score || 0);
-      var ok = true;
-      if (q && text.indexOf(q) === -1) ok = false;
-      if (ok && score < min) ok = false;
-      if (ok && decision && row.dataset.decision !== decision) ok = false;
-      if (ok && hideRejected && (row.dataset.decision === 'reject' || row.dataset.status === 'rejected')) ok = false;
-      row.hidden = !ok;
-      if (ok) shown += 1;
-    });
-    $('#empty').hidden = shown !== 0 || rows.length === 0;
-  }
-
-  ['q', 'min', 'decision', 'hideRejected'].forEach(function (id) {
-    var el = document.getElementById(id);
-    el.addEventListener('input', applyFilters);
-    el.addEventListener('change', applyFilters);
-  });
-  if (rows.length) applyFilters();
-
   document.addEventListener('input', function (event) {
     var input = event.target.closest('input.addr');
     if (!input) return;
@@ -420,19 +593,82 @@ const CLIENT_JS = `
 `;
 
 /** Server-rendered board. Every third-party string goes through escapeHtml. */
-export function renderPage({ rows = [], summary = {}, lastReport = null } = {}) {
+function paginationHtml({ page, pageCount, start, shown, total, filters }) {
+  if (!total) return '';
+  const from = start + 1;
+  const to = start + shown;
+  const link = (label, target, disabled, rel) =>
+    disabled
+      ? `<span class="page-btn is-disabled" aria-disabled="true">${label}</span>`
+      : `<a class="page-btn" href="${escapeHtml(boardHref(filters, { page: target }))}"${
+          rel ? ` rel="${rel}"` : ''
+        }>${label}</a>`;
+  return `<nav class="pager" aria-label="Pagination">
+  <p class="range">${from}–${to} of ${total}</p>
+  <div class="page-links">
+    ${link('« First', 1, page <= 1)}
+    ${link('‹ Previous', page - 1, page <= 1, 'prev')}
+    <span class="page-now">Page ${page} of ${pageCount}</span>
+    ${link('Next ›', page + 1, page >= pageCount, 'next')}
+    ${link('Last »', pageCount, page >= pageCount)}
+  </div>
+</nav>`;
+}
+
+export function renderPage({
+  rows = [],
+  summary = {},
+  lastReport = null,
+  filters = {},
+  pager = null,
+} = {}) {
+  const f = {
+    q: '',
+    min: 0,
+    decision: '',
+    hideRejected: false,
+    sort: 'score',
+    per: DEFAULT_PER,
+    page: 1,
+    ...filters,
+  };
   const s = summarize(rows);
   const counts = {
     postings: summary.postings ?? s.postings,
     open: summary.open ?? s.open,
     apply: summary.apply ?? s.apply,
   };
-  const body = rows.length
+  const p = pager || {
+    page: 1,
+    per: rows.length || DEFAULT_PER,
+    total: rows.length,
+    pageCount: 1,
+    start: 0,
+  };
+  const shown = rows.length;
+  const body = shown
     ? rows.map(rowHtml).join('\n')
-    : `<tr><td colspan="8" class="empty">No postings yet. Press "Scan now" to run the scan stage (the same searches as <code>npm run scan</code>).</td></tr>`;
+    : `<tr><td colspan="8" class="empty">No postings match these filters. Press "Scan now" to fetch postings (the same searches as <code>npm run scan</code>).</td></tr>`;
   const report = lastReport
     ? `<a href="/report/${encodeURIComponent(lastReport)}">Last report: ${escapeHtml(lastReport)}</a>`
     : '<span class="summary">No report yet</span>';
+  const decisionOptions = [['', 'all'], ...DECISIONS.map((d) => [d, d])]
+    .map(([value, label]) => `<option value="${value}"${f.decision === value ? ' selected' : ''}>${label}</option>`)
+    .join('');
+  const sortOptions = [['score', 'Score'], ['newest', 'Newest'], ['title', 'Title']]
+    .map(([value, label]) => `<option value="${value}"${f.sort === value ? ' selected' : ''}>${label}</option>`)
+    .join('');
+  const perOptions = PER_CHOICES.map(
+    (n) => `<option value="${n}"${p.per === n ? ' selected' : ''}>${n}</option>`,
+  ).join('');
+  const pagerHtml = paginationHtml({
+    page: p.page,
+    pageCount: p.pageCount,
+    start: p.start,
+    shown,
+    total: p.total,
+    filters: { ...f, page: p.page, per: p.per },
+  });
 
   return `<!doctype html>
 <html lang="en">
@@ -440,38 +676,34 @@ export function renderPage({ rows = [], summary = {}, lastReport = null } = {}) 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Job board</title>
-<style>${STYLE}</style>
+<link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
 <header class="top">
-  <div>
-    <h1>Job board</h1>
-    <p class="summary" id="summary">${counts.postings} postings · ${counts.open} open · ${counts.apply} apply</p>
+  <div class="top-row">
+    <div>
+      <h1>Job board</h1>
+      <p class="summary" id="summary">${counts.postings} postings · ${counts.open} open · ${counts.apply} apply</p>
+    </div>
+    <div class="tools">
+      ${report}
+      <a class="btn" href="/compose">Compose</a>
+      <a class="btn" href="/settings">Settings</a>
+      <button type="button" class="btn" id="scan">Scan now</button>
+    </div>
   </div>
-  <span class="spacer"></span>
-  <div class="tools">
-    ${report}
-    <a class="btn" href="/compose">Compose</a>
-    <button type="button" class="btn" id="scan">Scan now</button>
-  </div>
+  <form class="filters" method="get" action="/" role="search" aria-label="Filters">
+    <label class="grow" for="q">Search <input id="q" name="q" type="search" value="${escapeHtml(f.q)}" placeholder="title, company, city" autocomplete="off"></label>
+    <label for="min">Min score <input id="min" name="min" type="number" inputmode="numeric" min="0" max="100" step="1" value="${escapeHtml(f.min)}"></label>
+    <label for="decision">Decision <select id="decision" name="decision">${decisionOptions}</select></label>
+    <label for="sort">Sort <select id="sort" name="sort">${sortOptions}</select></label>
+    <label for="per">Per page <select id="per" name="per">${perOptions}</select></label>
+    <label class="check" for="hideRejected"><input id="hideRejected" name="hideRejected" type="checkbox" value="1"${f.hideRejected ? ' checked' : ''}> Hide rejected</label>
+    <button type="submit" class="btn primary">Apply</button>
+  </form>
 </header>
 
-<section class="filters" aria-label="Filters">
-  <label for="q">Search <input id="q" type="search" placeholder="title, company, city" autocomplete="off"></label>
-  <label for="min">Min score <input id="min" type="number" inputmode="numeric" min="0" max="100" step="1" value="0"></label>
-  <label for="decision">Decision
-    <select id="decision">
-      <option value="">all</option>
-      <option value="apply">apply</option>
-      <option value="review">review</option>
-      <option value="skip">skip</option>
-      <option value="reject">reject</option>
-    </select>
-  </label>
-  <label class="check" for="hideRejected"><input id="hideRejected" type="checkbox"> Hide rejected</label>
-</section>
-
-<table>
+<table class="board">
   <thead>
     <tr><th>Score</th><th>Title</th><th>Company</th><th>Where</th><th>Posted</th><th>Salary</th><th>Status</th><th>Actions</th></tr>
   </thead>
@@ -479,7 +711,7 @@ export function renderPage({ rows = [], summary = {}, lastReport = null } = {}) 
 ${body}
   </tbody>
 </table>
-<p id="empty" class="empty" hidden>No postings match these filters.</p>
+${pagerHtml}
 
 <div class="panel" id="panel" hidden role="dialog" aria-modal="true" aria-labelledby="panel-title" tabindex="-1">
   <div class="panel-body" tabindex="-1">
@@ -552,7 +784,7 @@ export function renderComposePage({ prefill = {} } = {}) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Draft mail</title>
-<style>${STYLE}${COMPOSE_STYLE}</style>
+<link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
 <header class="top">
@@ -752,6 +984,374 @@ const COMPOSE_JS = `
   });
 })();
 `;
+
+// ---------- settings ----------
+
+function normalizeSettingList(value) {
+  const items = Array.isArray(value) ? value : String(value ?? '').split(',');
+  const seen = new Set();
+  const out = [];
+  for (const raw of items) {
+    const item = String(raw ?? '').trim();
+    if (!item) continue;
+    const key = item.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
+/**
+ * Validate and coerce a settings-save payload against the seeded schema.
+ * Returns every offending path in `errors`; callers write nothing unless it is empty.
+ */
+export function validateSettings(fields = {}, known = listProfileFields()) {
+  const errors = [];
+  const values = {};
+  if (!fields || typeof fields !== 'object' || Array.isArray(fields)) {
+    return { values, errors: ['fields: must be an object of path -> value'] };
+  }
+
+  for (const [path, raw] of Object.entries(fields)) {
+    if (!known[path]) {
+      errors.push(`${path}: unknown setting`);
+      continue;
+    }
+    if (ARRAY_SETTING_PATHS.has(path)) {
+      values[path] = normalizeSettingList(raw);
+      continue;
+    }
+    if (NUMBER_SETTING_PATHS.has(path)) {
+      const text = String(raw ?? '').trim();
+      const number = text === '' ? NaN : Number(text);
+      if (!Number.isInteger(number) || number < 0) {
+        errors.push(`${path}: must be an integer >= 0`);
+        continue;
+      }
+      values[path] = number;
+      continue;
+    }
+    if (path === 'work.relocate') {
+      if (raw === true || raw === 'true' || raw === 'on' || raw === 1 || raw === '1') values[path] = true;
+      else if (raw === false || raw === 'false' || raw === '' || raw === 0 || raw === '0' || raw == null) {
+        values[path] = false;
+      } else errors.push(`${path}: must be true or false`);
+      continue;
+    }
+    if (path === 'titles.trackOrder') {
+      let parsed = raw;
+      if (typeof raw === 'string') {
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          errors.push(`${path}: must be valid JSON`);
+          continue;
+        }
+      }
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        errors.push(`${path}: must be a JSON object`);
+        continue;
+      }
+      values[path] = parsed;
+      continue;
+    }
+    values[path] = String(raw ?? '').trim();
+  }
+
+  if ('identity.email' in values && !EMAIL_RE.test(values['identity.email'])) {
+    errors.push('identity.email: not a valid email address');
+  }
+  if ('identity.fullName' in values && !String(values['identity.fullName']).trim()) {
+    errors.push('identity.fullName: must not be empty');
+  }
+
+  const effective = (path) => (path in values ? values[path] : known[path]?.value);
+  const floor = effective('compensation.floor');
+  const target = effective('compensation.target');
+  if (Number.isInteger(floor) && Number.isInteger(target) && floor > target) {
+    errors.push('compensation.floor: must be <= compensation.target');
+    errors.push('compensation.target: must be >= compensation.floor');
+  }
+
+  return { values, errors };
+}
+
+function renderSettingField(field, info) {
+  const id = `f-${field.path.replace(/[^a-z0-9]+/gi, '-')}`;
+  const value = info?.value;
+  const source = info?.source || 'seed';
+  const kind = field.kind;
+  let initial;
+  let input;
+
+  if (kind === 'bool') {
+    initial = value ? 'true' : 'false';
+    input = `<input id="${id}" type="checkbox" data-path="${escapeHtml(field.path)}" data-kind="bool" data-initial="${initial}"${value ? ' checked' : ''}>`;
+  } else if (kind === 'number') {
+    initial = String(value ?? '');
+    input = `<input id="${id}" type="number" inputmode="numeric" min="0" step="1" data-path="${escapeHtml(field.path)}" data-kind="number" data-initial="${escapeHtml(initial)}" value="${escapeHtml(initial)}">`;
+  } else if (kind === 'list') {
+    initial = (Array.isArray(value) ? value : []).join(', ');
+    input = `<input id="${id}" type="text" data-path="${escapeHtml(field.path)}" data-kind="list" data-initial="${escapeHtml(initial)}" value="${escapeHtml(initial)}">`;
+  } else if (kind === 'json') {
+    initial = JSON.stringify(value ?? {});
+    input = `<input id="${id}" type="text" data-path="${escapeHtml(field.path)}" data-kind="json" data-initial="${escapeHtml(initial)}" value="${escapeHtml(initial)}">`;
+  } else {
+    initial = String(value ?? '');
+    input = `<input id="${id}" type="text" data-path="${escapeHtml(field.path)}" data-kind="text" data-initial="${escapeHtml(initial)}" value="${escapeHtml(initial)}">`;
+  }
+
+  return `<label class="setting" for="${id}"><span class="setting-label">${escapeHtml(field.label)}</span>${input}<span class="src src-${source}"${info?.updated_at ? ` title="updated ${escapeHtml(info.updated_at)}"` : ''}>${source}</span></label>`;
+}
+
+const SETTINGS_STYLE = `
+.settings fieldset { border: 1px solid #d8d8d8; border-radius: 6px; margin: 0 0 16px; padding: 10px 14px 14px; }
+.settings legend { font-weight: 600; padding: 0 4px; }
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px 16px; }
+.setting { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.setting-label { color: #444; }
+.setting input[type=text], .setting input[type=number] { font: inherit; padding: 6px 8px; border: 1px solid #9a9a9a; border-radius: 4px; min-height: 34px; }
+.src { font-size: 11px; color: #666; }
+.src-db { color: #0b6b3a; }
+.savebar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+#save-status.err { color: #a11; }
+.saved { color: #0b6b3a; }
+`;
+
+const DARK_STYLE = `
+:root {
+  color-scheme: dark;
+  --bg: #0b0d10;
+  --surface: #14181d;
+  --surface-2: #1b2129;
+  --border: #2a323c;
+  --text: #e8edf2;
+  --muted: #a8b3c0;
+  --accent: #7cc0f5;
+  --ok: #6fd39a;
+  --warn: #e6c07a;
+  --danger: #ef9a9a;
+  --radius: 8px;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; padding: 0 16px 48px; font: 15px/1.5 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: var(--text); background: var(--bg); }
+a { color: var(--accent); }
+h1 { font-size: 20px; margin: 0 0 2px; }
+img, pre, table { max-width: 100%; }
+.top { position: sticky; top: 0; z-index: 30; margin: 0 -16px 16px; padding: 12px 16px 10px; background: var(--bg); border-bottom: 1px solid var(--border); }
+.top-row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.top .spacer { flex: 1 1 auto; }
+.summary { color: var(--muted); font-variant-numeric: tabular-nums; margin: 2px 0 0; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-top: 10px; }
+.filters label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); min-width: 0; }
+.filters .grow { flex: 1 1 220px; }
+.filters input, .filters select { width: 100%; min-width: 0; }
+.filters .check { flex-direction: row; align-items: center; gap: 6px; font-size: 13px; color: var(--text); min-height: 40px; }
+.filters .check input { width: auto; min-height: 0; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+.btn, .filters input, .filters select, .addr, .mark select, .settings input, .settings textarea, .settings select, .compose .f {
+  min-height: 40px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface-2); color: var(--text);
+}
+.btn { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; text-decoration: none; }
+.btn:hover { border-color: var(--accent); }
+.btn:disabled, .btn.is-off { color: var(--muted); background: var(--surface); border-color: var(--border); cursor: not-allowed; opacity: .7; }
+.btn.primary { border-color: var(--accent); color: var(--bg); background: var(--accent); font-weight: 600; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.board { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: var(--radius); overflow: hidden; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); background: var(--surface-2); position: sticky; top: 0; }
+tbody tr:hover { background: var(--surface-2); }
+td.c-title { min-width: 220px; }
+td.c-score, td.c-date, td.c-salary { white-space: nowrap; font-variant-numeric: tabular-nums; }
+td.c-actions { min-width: 320px; }
+.draft { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.addr { width: 190px; }
+.hint { font-size: 11px; color: var(--warn); }
+.title-text { font-weight: 600; }
+.preview { margin: 4px 0 0; color: var(--muted); font-weight: 400; font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.details { margin-top: 2px; }
+.details-toggle { display: inline-flex; align-items: center; min-height: 40px; color: var(--accent); cursor: pointer; font-weight: 500; font-size: 13px; }
+.details-body { margin: 4px 0; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); }
+.details-body h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 12px 0 4px; }
+.details-body h3:first-of-type { margin-top: 10px; }
+.desc { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.reasons, .flags { margin: 0; padding-left: 18px; }
+.flags li { color: var(--warn); }
+.reasons li, .flags li { margin: 2px 0; }
+.is-empty { color: var(--muted); margin: 0; }
+.dec { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.d-apply { color: var(--ok); }
+.d-review { color: var(--warn); }
+.d-skip { color: var(--muted); }
+.d-reject { color: var(--danger); }
+.st { font-size: 12px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 999px; white-space: nowrap; color: var(--muted); }
+.st-new { border-style: dashed; }
+.st-applied, .st-replied, .st-interview, .st-offer { color: var(--accent); border-color: var(--accent); }
+.st-rejected { color: var(--danger); border-color: var(--danger); }
+.mark { display: inline-flex; gap: 5px; align-items: center; font-size: 12px; color: var(--muted); }
+.empty { padding: 18px 8px; color: var(--muted); }
+.pager { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin: 16px 0 8px; }
+.range { margin: 0; color: var(--muted); font-variant-numeric: tabular-nums; }
+.page-links { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.page-btn { display: inline-flex; align-items: center; min-height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); text-decoration: none; }
+.page-btn:hover { border-color: var(--accent); }
+.page-btn.is-disabled { color: var(--muted); opacity: .55; }
+.page-now { color: var(--muted); padding: 0 6px; font-variant-numeric: tabular-nums; }
+.panel[hidden] { display: none; }
+.panel { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .65); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.panel-body { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); max-width: 760px; width: 100%; max-height: 86vh; overflow: auto; padding: 16px 18px; }
+.panel-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.panel-head h2 { font-size: 15px; margin: 0 0 6px; }
+#panel-note { margin: 0 0 10px; color: var(--muted); }
+#panel-text { white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 10px; margin: 0 0 10px; }
+.panel-actions { display: flex; gap: 8px; }
+.compose { display: flex; flex-direction: column; gap: 14px; max-width: 760px; }
+.compose label.f { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--muted); }
+.compose .f { width: 100%; }
+.compose textarea.f { resize: vertical; min-height: 320px; line-height: 1.55; }
+.compose .opt { color: var(--muted); font-weight: 400; }
+.compose .hint { color: var(--muted); font-size: 12px; }
+.compose-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.error { color: var(--danger); }
+.settings fieldset { border: 1px solid var(--border); border-radius: var(--radius); margin: 0 0 16px; padding: 12px 14px 16px; background: var(--surface); }
+.settings legend { font-weight: 600; padding: 0 6px; }
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.setting { display: flex; flex-direction: column; gap: 5px; font-size: 13px; min-width: 0; }
+.setting-label { color: var(--muted); }
+.settings input, .settings textarea, .settings select, .setting input[type=text], .setting input[type=number] { width: 100%; min-width: 0; }
+.settings textarea { min-height: 100px; resize: vertical; }
+.src { font-size: 11px; color: var(--muted); }
+.src-db { color: var(--ok); }
+.savebar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+#save-status.err { color: var(--danger); }
+.saved { color: var(--ok); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (max-width: 899px) {
+  body { padding: 0 12px 40px; }
+  .top { margin: 0 -12px 12px; padding: 10px 12px 8px; }
+  .top-row { align-items: stretch; flex-direction: column; }
+  .tools { flex-wrap: wrap; }
+  .filters { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .filters label, .filters input, .filters select { width: 100%; }
+  .filters .check { min-height: 44px; }
+  .board, .board thead, .board tbody, .board tr, .board td { display: block; width: 100%; }
+  .board { background: none; border-radius: 0; overflow: visible; }
+  .board thead { display: none; }
+  .board tr { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; padding: 10px; }
+  .board td { border: 0; padding: 4px 2px; }
+  .board td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 2px; }
+  .board td.c-title::before, .board td.c-actions::before { display: none; }
+  .board td.c-title { min-width: 0; }
+  .board td.c-actions { min-width: 0; padding-top: 10px; }
+  .actions { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+  .actions .btn, .actions .draft, .actions .addr, .actions .mark, .actions .mark select { width: 100%; }
+  .draft { flex-direction: column; align-items: stretch; }
+  .addr { width: 100%; }
+  .btn, .page-btn, .filters input, .filters select, .addr, .mark select, .compose .f, .settings input, .settings textarea, .settings select, summary.details-toggle { min-height: 44px; }
+  .page-links { width: 100%; }
+  .page-btn { flex: 1 1 auto; justify-content: center; }
+  .settings-grid { grid-template-columns: 1fr; }
+  .compose textarea.f { min-height: 240px; }
+}
+`;
+
+export const APP_CSS = [STYLE, COMPOSE_STYLE, SETTINGS_STYLE, DARK_STYLE].join('\n');
+
+const SETTINGS_CLIENT_JS = `
+(function () {
+  var form = document.getElementById('settings');
+  var status = document.getElementById('save-status');
+  function encoded(el) {
+    if (el.dataset.kind === 'bool') return el.checked ? 'true' : 'false';
+    return el.value;
+  }
+  form.addEventListener('submit', async function (event) {
+    event.preventDefault();
+    status.textContent = '';
+    status.className = '';
+    var fields = {};
+    var changed = 0;
+    form.querySelectorAll('[data-path]').forEach(function (el) {
+      var now = encoded(el);
+      if (now === el.dataset.initial) return;
+      fields[el.dataset.path] = now;
+      changed += 1;
+    });
+    if (!changed) {
+      status.textContent = 'Nothing to save.';
+      return;
+    }
+    try {
+      var res = await fetch('/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'settings-save', fields: fields })
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok) {
+        status.className = 'err';
+        status.textContent = data.error || ('Save failed (' + res.status + ')');
+        return;
+      }
+      location.href = '/settings?saved=1';
+    } catch (err) {
+      status.className = 'err';
+      status.textContent = err.message;
+    }
+  });
+})();
+`;
+
+/** Read values from the DB (never the file) and offer them for editing. */
+export function renderSettingsPage({ fields = listProfileFields(), saved = false } = {}) {
+  const groups = SETTINGS_GROUPS.map(
+    (group) => `
+    <fieldset>
+      <legend>${escapeHtml(group.title)}</legend>
+      <div class="settings-grid">
+        ${group.fields.map((field) => renderSettingField(field, fields[field.path])).join('')}
+      </div>
+    </fieldset>`,
+  ).join('');
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings</title>
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Settings</h1>
+    <p class="summary">Stored in SQLite. data/profile.json is only the seed now.</p>
+  </div>
+  <span class="spacer"></span>
+  <div class="tools">
+    <a class="btn" href="/">Back to board</a>
+    <a class="btn" href="/compose">Compose</a>
+  </div>
+</header>
+${saved ? '<p class="saved" role="status">Settings saved.</p>' : ''}
+<p id="save-status" role="status"></p>
+<form class="settings" id="settings" novalidate>
+${groups}
+  <div class="savebar">
+    <button class="btn" type="submit">Save settings</button>
+    <p class="hint">“db” means edited here; “seed” means it still comes from data/profile.json. Reseed the file with <code>npm run reseed-profile -- --apply</code>.</p>
+  </div>
+</form>
+<script>${SETTINGS_CLIENT_JS}</script>
+</body>
+</html>`;
+}
 
 // ---------- actions ----------
 
@@ -954,10 +1554,19 @@ async function handleAction(req, res, deps = {}) {
     case 'compose-draft':
       result = await composeDraft(body, deps);
       break;
+    case 'settings-save': {
+      if (!body.fields || typeof body.fields !== 'object' || Array.isArray(body.fields)) {
+        throw new HttpError(400, 'settings-save needs a "fields" object');
+      }
+      const { values, errors } = validateSettings(body.fields, listProfileFields());
+      if (errors.length) throw new HttpError(400, errors.join('; '));
+      result = setProfileFields(values);
+      break;
+    }
     default:
       throw new HttpError(
         400,
-        `unknown action "${String(body.action)}"; expected one of scan, status, letter, draft, compose-draft`,
+        `unknown action "${String(body.action)}"; expected one of scan, status, letter, draft, compose-draft, settings-save`,
       );
   }
   sendJson(res, 200, result);
@@ -973,8 +1582,28 @@ export function createHandler({ createDraft = createGmailDraft } = {}) {
       const url = new URL(req.url || '/', `http://${HOST}`);
 
       if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
+        const filters = parseBoardQuery(url.searchParams);
         const { rows, summary, lastReport } = boardSnapshot();
-        return sendHtml(res, renderPage({ rows, summary, lastReport }));
+        const ordered = sortRows(filterRows(rows, filters), filters.sort);
+        const pager = paginateRows(ordered, filters.page, filters.per);
+        return sendHtml(
+          res,
+          renderPage({
+            rows: pager.rows,
+            summary,
+            lastReport,
+            filters: { ...filters, page: pager.page, per: pager.per },
+            pager,
+          }),
+        );
+      }
+      if (req.method === 'GET' && url.pathname === '/assets/app.css') {
+        res.writeHead(200, {
+          'Content-Type': 'text/css; charset=utf-8',
+          'Cache-Control': 'public, max-age=300',
+          'X-Content-Type-Options': 'nosniff',
+        });
+        return res.end(APP_CSS);
       }
       if (req.method === 'GET' && url.pathname === '/compose') {
         const wanted = String(url.searchParams.get('posting') || '').trim();
@@ -985,6 +1614,9 @@ export function createHandler({ createDraft = createGmailDraft } = {}) {
         }
         const profile = loadProfile();
         return sendHtml(res, renderComposePage({ prefill: composePrefill(posting, profile) }));
+      }
+      if (req.method === 'GET' && url.pathname === '/settings') {
+        return sendHtml(res, renderSettingsPage({ saved: url.searchParams.get('saved') === '1' }));
       }
       if (req.method === 'GET' && url.pathname === '/favicon.ico') {
         res.writeHead(204).end();

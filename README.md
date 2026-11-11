@@ -8,8 +8,10 @@ step, plain Node. A human runs the same commands an agent runs; state lives in S
 
 ```bash
 cd job-apply
-npm test            # 27 tests (policy, DB, letters, dashboard), must stay green
+npm test            # 56 tests (policy, DB, letters, dashboard, settings, UI), must stay green
 npm run migrate     # one-shot: import the legacy JSON files into the DB (idempotent)
+npm run reseed-profile          # report what profile.json would change in the DB
+npm run reseed-profile -- --apply  # write profile.json into the DB
 npm run scan        # stage 1: pull open postings into the DB
 npm run shortlist   # stage 2: score + rank into the DB, export data/shortlist.json
 npm run report      # stage 4: write out/report-YYYY-MM-DD.md + data/applications.md
@@ -60,13 +62,44 @@ npm run dash            # http://127.0.0.1:4970
 PORT=5000 npm run dash  # another port
 ```
 
-One server-side rendered page, no build step and no npm dependency. It binds `127.0.0.1`
-only, because one button can create a Gmail draft. `JOB_APPLY_DB` points it at another
-database file, which is how you try it without touching the real application log.
+Three server-side rendered pages (board, compose, settings), no build step and no npm
+dependency. It binds `127.0.0.1` only, because one button can create a Gmail draft.
+`JOB_APPLY_DB` points it at another database file, which is how you try it without
+touching the real application log.
 
-The page lists every posting, joined to its application row when one exists, scored live
-with `lib/score.mjs` so it works without running `npm run shortlist` first. Filters: text
-search, minimum score, decision, and a hide-rejected toggle.
+**One stylesheet for all three pages.** They link `GET /assets/app.css`, which serves the
+dark theme by default: near-black page (`#0b0d10`), layered surfaces (`#14181d`,
+`#1b2129`), body text `#e8edf2`, muted text `#a8b3c0`, and accent `#7cc0f5`. Body text is
+about 16:1 and muted text about 8:1 on the page background. At `>= 900px` the board is a
+table; below `899px` each posting becomes a stacked card with 44px tap targets, no
+horizontal scrolling, and filters that stack in one column. The header is sticky and
+carries the counts, search, filters, `Scan now`, `Compose`, and `Settings`.
+
+The board lists postings joined to their application row when one exists, scored live
+with `lib/score.mjs` so it works without running `npm run shortlist` first. All filtering,
+ordering, and pagination happen on the server, so the order is stable across pages:
+score descending, then published date descending, then title, then id.
+
+| Query parameter | Meaning |
+|---|---|
+| `page` | 1-based page; out-of-range or garbage values clamp to a real page |
+| `per` | `25` (default), `50`, or `100`; anything else falls back to 25 |
+| `q` | Text search over title, company, city, and description |
+| `min` | Minimum score, 0 to 100 |
+| `decision` | `apply`, `review`, `skip`, or `reject` |
+| `hideRejected` | `1` hides rejected decisions and rejected application rows |
+| `sort` | `score` (default), `newest`, or `title` |
+
+Every pagination link carries the current filters. The pager shows `1–25 of 50`, first,
+previous, next, and last, and never returns an empty page for an out-of-range request.
+
+Each posting has a short inline preview plus a native `<details>`/`<summary>` toggle. The
+expanded block shows the full description (third-party text, always HTML-escaped, with
+paragraph breaks preserved) and the scorer's reasons and flags. It works without
+JavaScript and is keyboard accessible.
+
+The top bar links to `Settings` (`GET /settings`), where you edit personal details, work
+preferences, compensation, titles, and skills. See [Settings](#settings) below.
 
 | Control | What it does |
 |---|---|
@@ -80,6 +113,34 @@ search, minimum score, decision, and a hide-rejected toggle.
 Mark creates the application row when the posting has none yet (`channel: site`,
 `status: to-apply`) and then writes the new status, so every transition appends an
 `application_events` row.
+
+### Settings
+
+`Settings` in the top bar opens `GET /settings`, grouped as Personal, Work, Compensation,
+Titles, and Skills. Each field shows `db` when you edited it there, or `seed` when it still
+comes from `data/profile.json`.
+
+**The database is the system of record.** Migration v2 adds `profile_fields(path TEXT
+PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT)`, one row per leaf setting, with the
+value JSON-encoded so numbers, booleans, arrays, and objects round-trip. The first open of
+an empty table walks `data/profile.json` and inserts every leaf path once. `loadProfile()`
+now assembles the nested `{value, source, scope}` shape from those rows, so every CLI stage
+(`shortlist`, `apply`, `report`, `dash`) reads the DB, not the file.
+
+**Editing the file does nothing by itself.** `data/profile.json` is the seed and is never
+deleted, but after the first seed a hand edit is inert until you re-seed explicitly:
+
+```bash
+npm run reseed-profile              # dry run: lists added, changed, removed paths
+npm run reseed-profile -- --apply   # mirror the file into the DB, source becomes "seed"
+```
+
+Seeding never runs again automatically. A re-seed resets the affected rows to `seed`.
+The save endpoint is `POST /api/action` with `{action:'settings-save', fields:{path: value,
+...}}`. It validates email shape, non-empty full name, integer compensation at or above
+zero, `floor <= target`, comma-separated lists (trimmed, deduped), and unknown paths. The
+write is one transaction: if any field is invalid it returns 400 naming every offending
+path and changes nothing.
 
 ### Compose (Draft mail)
 
@@ -122,12 +183,12 @@ found in the posting's own description, or one you paste into the row's address 
 neither, the button is disabled and the row says `no address published`. As of the current
 50 postings, that is every row: none of them publishes an address.
 
-**Letters are deterministic.** `lib/letter.mjs` composes only `data/profile.json` facts and
-the posting's title/company. `lintLetter` is the guardrail: it flags a years claim the
-profile cannot support, an employer that is not in `profile.employment.employers`, "senior"
-as a self-description, a technology that is not in `profile.skills`, and a letter under 120
-words. Every generated letter passes its own linter; the dashboard shows the linter result
-next to the letter.
+**Letters are deterministic.** `lib/letter.mjs` composes only profile facts from the DB
+(`profile_fields`) and the posting's title/company. `lintLetter` is the guardrail: it flags
+a years claim the profile cannot support, an employer that is not in
+`profile.employment.employers`, "senior" as a self-description, a technology that is not in
+`profile.skills`, and a letter under 120 words. Every generated letter passes its own
+linter; the dashboard shows the linter result next to the letter.
 
 ## Files
 
@@ -135,8 +196,8 @@ The database is the system of record. Everything else is an input document, a mi
 source, or an export.
 
 ```
-data/job-apply.db       SYSTEM OF RECORD: postings, applications, application_events (gitignored)
-data/profile.json       your facts (identity, comp floor/target, titles, geo) — hand-edited
+data/job-apply.db       SYSTEM OF RECORD: postings, applications, application_events, profile_fields (gitignored)
+data/profile.json       seed for profile_fields (identity, comp floor/target, titles, geo) - not the truth after first seed
 data/answers.md         the written policy + answer bank this rubric implements — hand-edited
 data/applications.md    export: human-readable application log (committable)
 data/shortlist.json     export: scored snapshot, rescored from the DB every run (committable)
