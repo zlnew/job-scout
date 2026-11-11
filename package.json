@@ -8,7 +8,7 @@
     "node": ">=22.5"
   },
   "scripts": {
-    "test": "node --test test/score.test.mjs test/db.test.mjs test/letter.test.mjs test/serve.test.mjs",
+    "test": "node --test test/score.test.mjs test/db.test.mjs test/letter.test.mjs test/serve.test.mjs test/compose.test.mjs",
     "scan": "node bin/scan.mjs",
     "shortlist": "node bin/shortlist.mjs",
     "apply": "node bin/apply.mjs",

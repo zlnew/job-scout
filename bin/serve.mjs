@@ -451,6 +451,7 @@ export function renderPage({ rows = [], summary = {}, lastReport = null } = {}) 
   <span class="spacer"></span>
   <div class="tools">
     ${report}
+    <a class="btn" href="/compose">Compose</a>
     <button type="button" class="btn" id="scan">Scan now</button>
   </div>
 </header>
@@ -499,6 +500,258 @@ ${body}
 </body>
 </html>`;
 }
+
+// ---------- compose ----------
+
+/** Addresses the compose form accepts. One To header, comma/semicolon separated, deduped. */
+const COMPOSE_EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
+export const MIN_BODY = 40;
+const GMAIL_DRAFTS_URL = 'https://mail.google.com/mail/u/0/#drafts';
+
+/** Split a compose address field, reject a malformed token, and drop duplicates. */
+export function parseAddressList(value, field = 'to') {
+  const tokens = String(value ?? '')
+    .split(/[,;]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const out = [];
+  for (const token of tokens) {
+    if (!COMPOSE_EMAIL_RE.test(token)) {
+      throw new HttpError(400, `${field}: "${token}" is not a valid email address`);
+    }
+    if (!out.includes(token)) out.push(token);
+  }
+  return out;
+}
+
+/** What the compose form shows before a human edits it. Nothing here is invented. */
+export function composePrefill(posting = null, profile = {}) {
+  const rawName = profile?.identity?.fullName;
+  const fullName = rawName && typeof rawName === 'object' ? rawName.value : rawName;
+  const to = posting ? contactEmail(posting) || '' : '';
+  const subject = posting
+    ? [posting.title, fullName].map((v) => String(v ?? '').trim()).filter(Boolean).join(' - ')
+    : '';
+  return {
+    postingId: posting?.id || '',
+    to,
+    cc: '',
+    bcc: '',
+    subject,
+    body: buildLetter(posting ?? null, profile, to ? { to } : {}),
+    attachmentPath: path.resolve(PATHS.resume),
+  };
+}
+
+/** The compose page: same style as the board, plus the Draft Mail form. */
+export function renderComposePage({ prefill = {} } = {}) {
+  const value = (v) => escapeHtml(v ?? '');
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Draft mail</title>
+<style>${STYLE}${COMPOSE_STYLE}</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Draft mail</h1>
+    <p class="summary">Creates a draft only. You open Gmail and press send.</p>
+  </div>
+  <span class="spacer"></span>
+  <div class="tools">
+    <a class="btn" href="/">Back to board</a>
+  </div>
+</header>
+
+<form class="compose" id="compose" novalidate>
+  <input type="hidden" name="posting_id" value="${value(prefill.postingId)}">
+  <label class="f" for="to">To
+    <input class="f" id="to" name="to" type="text" value="${value(prefill.to)}" placeholder="name@company.com, another@company.com" autocomplete="off">
+  </label>
+  <label class="f" for="cc">Cc <span class="opt">optional</span>
+    <input class="f" id="cc" name="cc" type="text" value="${value(prefill.cc)}" placeholder="comma or semicolon separated" autocomplete="off">
+  </label>
+  <label class="f" for="bcc">Bcc <span class="opt">optional</span>
+    <input class="f" id="bcc" name="bcc" type="text" value="${value(prefill.bcc)}" placeholder="comma or semicolon separated" autocomplete="off">
+  </label>
+  <label class="f" for="subject">Subject
+    <input class="f" id="subject" name="subject" type="text" value="${value(prefill.subject)}" autocomplete="off">
+  </label>
+  <label class="f" for="body">Body
+    <textarea class="f" id="body" name="body" rows="20" spellcheck="true">${value(prefill.body)}</textarea>
+  </label>
+  <label class="f" for="attachmentPath">Attachment
+    <input class="f" id="attachmentPath" name="attachmentPath" type="text" value="${value(prefill.attachmentPath)}" autocomplete="off">
+    <span class="hint">A path can be changed, or cleared to omit the attachment. Only a .pdf file that exists is accepted.</span>
+  </label>
+  <div class="compose-actions">
+    <button type="submit" class="btn primary" id="create">Create Gmail draft</button>
+    <span class="hint">Creates a draft only. You open Gmail and press send.</span>
+  </div>
+</form>
+<p class="error" id="compose-error" role="alert" hidden></p>
+
+<div class="panel" id="panel" hidden role="status" aria-live="polite">
+  <div class="panel-body">
+    <div class="panel-head">
+      <h2>Draft created</h2>
+      <button type="button" class="btn" id="panel-close">Close</button>
+    </div>
+    <p id="draft-id"></p>
+    <p>${DRAFT_NOTICE}</p>
+    <p><a href="${GMAIL_DRAFTS_URL}" target="_blank" rel="noopener noreferrer">Open Gmail drafts</a></p>
+  </div>
+</div>
+
+<script>${COMPOSE_JS}</script>
+</body>
+</html>`;
+}
+
+/**
+ * Create a Gmail draft from the compose form. Validation runs first and never reaches
+ * Gmail; the injected createDraft is the only write path, and it never sends.
+ */
+export async function composeDraft(payload = {}, { createDraft = createGmailDraft } = {}) {
+  const to = parseAddressList(payload.to, 'to');
+  if (!to.length) {
+    throw new HttpError(400, 'compose-draft needs at least one recipient address in "to"');
+  }
+  const cc = parseAddressList(payload.cc, 'cc');
+  const bcc = parseAddressList(payload.bcc, 'bcc');
+
+  const subject = String(payload.subject ?? '').trim();
+  if (!subject) throw new HttpError(400, 'compose-draft needs a subject');
+
+  const body = String(payload.body ?? '').trim();
+  if (!body) throw new HttpError(400, 'compose-draft needs a body');
+  if (body.length < MIN_BODY) {
+    throw new HttpError(
+      400,
+      `compose-draft body is too short (${body.length} characters); at least ${MIN_BODY} are required`,
+    );
+  }
+
+  const rawAttachment = String(payload.attachmentPath ?? '').trim();
+  let attachmentPath = null;
+  if (rawAttachment) {
+    attachmentPath = path.resolve(rawAttachment);
+    if (!/\.pdf$/i.test(attachmentPath)) {
+      throw new HttpError(400, `attachment must be a .pdf file: "${rawAttachment}"`);
+    }
+    if (!fs.existsSync(attachmentPath) || !fs.statSync(attachmentPath).isFile()) {
+      throw new HttpError(400, `attachment not found: "${rawAttachment}"`);
+    }
+  }
+
+  const args = { to: to.join(', '), subject, body };
+  if (cc.length) args.cc = cc.join(', ');
+  if (bcc.length) args.bcc = bcc.join(', ');
+  if (attachmentPath) {
+    args.attachmentPath = attachmentPath;
+    args.attachmentName = path.basename(attachmentPath);
+  }
+
+  let draft;
+  try {
+    draft = await createDraft(args);
+  } catch (err) {
+    throw new HttpError(502, `Gmail draft failed: ${err.message}`);
+  }
+
+  const draftId = draft?.draftId ?? draft?.id ?? null;
+
+  // A compose is not necessarily an application: only an existing row is transitioned.
+  let application = null;
+  const postingKey = String(payload.posting_id ?? '').trim();
+  if (postingKey && listApplications().some((a) => a.posting_id === postingKey)) {
+    const updated = upsertApplication({
+      posting_id: postingKey,
+      status: 'drafted',
+      to_addr: to.join(', '),
+      subject,
+      draft_id: draftId,
+    });
+    application = { id: updated.id, status: updated.status };
+  }
+
+  const result = {
+    draftId,
+    to: to.join(', '),
+    cc: cc.join(', '),
+    bcc: bcc.join(', '),
+    subject,
+    attachment: attachmentPath,
+    note: DRAFT_NOTICE,
+  };
+  if (application) result.application = application;
+  return result;
+}
+
+const COMPOSE_STYLE = `
+.compose { display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
+.compose label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #444; }
+.compose .f { font: inherit; padding: 6px 8px; border: 1px solid #9a9a9a; border-radius: 4px; background: #fff; color: inherit; }
+.compose textarea.f { resize: vertical; min-height: 320px; line-height: 1.5; }
+.compose .opt { color: #666; font-weight: 400; }
+.compose .hint { color: #555; font-size: 12px; }
+.compose-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.compose .primary { font-weight: 600; }
+.error { color: #9c1c1c; }
+`;
+
+const COMPOSE_JS = `
+(function () {
+  var form = document.getElementById('compose');
+  var error = document.getElementById('compose-error');
+  var panel = document.getElementById('panel');
+  var draftId = document.getElementById('draft-id');
+  var button = document.getElementById('create');
+
+  function showError(message) {
+    error.textContent = message;
+    error.hidden = false;
+  }
+
+  document.getElementById('panel-close').addEventListener('click', function () {
+    panel.hidden = true;
+  });
+
+  form.addEventListener('submit', async function (event) {
+    event.preventDefault();
+    error.hidden = true;
+    panel.hidden = true;
+    button.disabled = true;
+    var payload = { action: 'compose-draft' };
+    ['to', 'cc', 'bcc', 'subject', 'body', 'attachmentPath', 'posting_id'].forEach(function (name) {
+      var field = form.elements[name];
+      if (field) payload[name] = field.value;
+    });
+    try {
+      var res = await fetch('/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      var result = await res.json();
+      if (!res.ok) {
+        showError(result.error || 'Draft not created. Check the fields and try again.');
+        return;
+      }
+      draftId.textContent = 'Draft id: ' + result.draftId;
+      panel.hidden = false;
+      panel.querySelector('.panel-body').focus();
+    } catch (err) {
+      showError('Draft not created: ' + err.message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+})();
+`;
 
 // ---------- actions ----------
 
@@ -672,7 +925,7 @@ function readBody(req, limit = 1_000_000) {
   });
 }
 
-async function handleAction(req, res) {
+async function handleAction(req, res, deps = {}) {
   const text = await readBody(req);
   let body;
   try {
@@ -698,16 +951,23 @@ async function handleAction(req, res) {
     case 'draft':
       result = await draftFor(body.id, body.to);
       break;
+    case 'compose-draft':
+      result = await composeDraft(body, deps);
+      break;
     default:
       throw new HttpError(
         400,
-        `unknown action "${String(body.action)}"; expected one of scan, status, letter, draft`,
+        `unknown action "${String(body.action)}"; expected one of scan, status, letter, draft, compose-draft`,
       );
   }
   sendJson(res, 200, result);
 }
 
-export function createHandler() {
+/**
+ * Build the request handler. `createDraft` is injected so tests can stub the only
+ * Gmail write path; the default is the real createGmailDraft.
+ */
+export function createHandler({ createDraft = createGmailDraft } = {}) {
   return async (req, res) => {
     try {
       const url = new URL(req.url || '/', `http://${HOST}`);
@@ -715,6 +975,16 @@ export function createHandler() {
       if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
         const { rows, summary, lastReport } = boardSnapshot();
         return sendHtml(res, renderPage({ rows, summary, lastReport }));
+      }
+      if (req.method === 'GET' && url.pathname === '/compose') {
+        const wanted = String(url.searchParams.get('posting') || '').trim();
+        let posting = null;
+        if (wanted) {
+          posting = getPosting(wanted);
+          if (!posting) throw new HttpError(404, `no posting with id "${wanted}"`);
+        }
+        const profile = loadProfile();
+        return sendHtml(res, renderComposePage({ prefill: composePrefill(posting, profile) }));
       }
       if (req.method === 'GET' && url.pathname === '/favicon.ico') {
         res.writeHead(204).end();
@@ -736,7 +1006,7 @@ export function createHandler() {
       }
       if (url.pathname === '/api/action') {
         if (req.method !== 'POST') throw new HttpError(405, `method ${req.method} not allowed on /api/action`);
-        return await handleAction(req, res);
+        return await handleAction(req, res, { createDraft });
       }
       throw new HttpError(404, `no route for ${url.pathname}`);
     } catch (err) {

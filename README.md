@@ -74,11 +74,45 @@ search, minimum score, decision, and a hide-rejected toggle.
 | `Open site` | Opens `posting.url` in a new tab |
 | `Letter` | Builds the cover letter from `lib/letter.mjs` and shows it in a panel with a Copy button |
 | `Draft mail` | Creates a Gmail draft with the letter and the CV attached |
+| `Compose` | Opens the free-form draft form: recipients, subject, body, attachment |
 | `Mark ...` | Moves the application to applied, replied, interview, offer, rejected, or closed |
 
 Mark creates the application row when the posting has none yet (`channel: site`,
 `status: to-apply`) and then writes the new status, so every transition appends an
 `application_events` row.
+
+### Compose (Draft mail)
+
+`Compose` in the top bar opens `GET /compose`: the same draft operation as a row's
+`Draft mail` button, but not tied to one posting, and every field is editable.
+
+| Field | Default |
+|---|---|
+| `To` | empty, unless the posting publishes an address in its own text |
+| `Cc`, `Bcc` | empty, optional |
+| `Subject` | empty; with `?posting=<id>` it is the posting title plus your name |
+| `Body` | the letter template; with `?posting=<id>` it is `buildLetter` for that posting |
+| `Attachment` | absolute path to `profile.work.resumePath` (`public/resume.pdf`) |
+
+`GET /compose?posting=<posting_id>` prefills `To` only from `contactEmail(posting)` (the
+address published in the posting text). When the posting publishes none, `To` stays empty
+and you paste the real address yourself.
+
+The button posts `{action:'compose-draft', to, cc, bcc, subject, body, attachmentPath,
+posting_id?}` to `/api/action` and validates before anything reaches Gmail:
+
+- at least one valid address in `To`, comma or semicolon separated, trimmed, duplicates dropped
+- a non-empty `subject`
+- a non-empty `body` of at least 40 characters
+- `attachmentPath`, when set, must exist and end in `.pdf`; clear it to omit the attachment
+
+Invalid input returns 400 with the reason and never calls Gmail. A Gmail failure returns
+502 with the upstream message. On success the page shows the draft id and a link to
+`https://mail.google.com/mail/u/0/#drafts`. If `posting_id` matches an existing
+application it moves to `drafted` and appends an event; a compose with no matching
+application creates no application row.
+
+**It creates a draft and never sends.** You open Gmail and press send.
 
 **Draft mail never sends.** It creates a draft and shows the returned draft id plus the
 sentence: "Open Gmail and press send — this tool never sends." You press send.
