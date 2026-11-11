@@ -10,6 +10,7 @@
 import { renderTable } from '../lib/store.mjs';
 import { openDb, upsertPostings, listPostings } from '../lib/db.mjs';
 import { scanFungsi } from '../lib/sources.mjs';
+import { DEFAULT_SEARCHES } from '../lib/searches.mjs';
 
 const args = process.argv.slice(2);
 const has = (f) => args.includes(f);
@@ -17,15 +18,6 @@ const val = (f, d) => {
   const i = args.indexOf(f);
   return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : d;
 };
-
-const DEFAULT_SEARCHES = [
-  { query: 'backend', city: 'jakarta' },
-  { query: 'back end', city: 'jakarta' },
-  { query: 'full stack', city: 'jakarta' },
-  { query: 'software engineer', city: 'jakarta' },
-  { query: 'backend', remote: true },
-  { query: 'engineer', city: 'bekasi' },
-];
 
 function searchesFromArgs() {
   const query = val('--query');

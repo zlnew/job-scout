@@ -8,11 +8,12 @@ step, plain Node. A human runs the same commands an agent runs; state lives in S
 
 ```bash
 cd job-apply
-npm test            # 12 policy tests, must stay green
+npm test            # 27 tests (policy, DB, letters, dashboard), must stay green
 npm run migrate     # one-shot: import the legacy JSON files into the DB (idempotent)
 npm run scan        # stage 1: pull open postings into the DB
 npm run shortlist   # stage 2: score + rank into the DB, export data/shortlist.json
 npm run report      # stage 4: write out/report-YYYY-MM-DD.md + data/applications.md
+npm run dash        # local dashboard on http://127.0.0.1:4970 (see below)
 ```
 
 Stage 3 is deliberate, per target:
@@ -51,6 +52,48 @@ application leaves the account only when you press send.
 you (drafts to send, links to apply), application history, stale postings, next actions.
 It also rewrites `data/applications.md`, a readable mirror of the application log so git
 shows the history.
+
+## Dashboard
+
+```bash
+npm run dash            # http://127.0.0.1:4970
+PORT=5000 npm run dash  # another port
+```
+
+One server-side rendered page, no build step and no npm dependency. It binds `127.0.0.1`
+only, because one button can create a Gmail draft. `JOB_APPLY_DB` points it at another
+database file, which is how you try it without touching the real application log.
+
+The page lists every posting, joined to its application row when one exists, scored live
+with `lib/score.mjs` so it works without running `npm run shortlist` first. Filters: text
+search, minimum score, decision, and a hide-rejected toggle.
+
+| Control | What it does |
+|---|---|
+| `Scan now` | Runs stage 1 in this process with the same searches as `npm run scan`, then refreshes the counts |
+| `Open site` | Opens `posting.url` in a new tab |
+| `Letter` | Builds the cover letter from `lib/letter.mjs` and shows it in a panel with a Copy button |
+| `Draft mail` | Creates a Gmail draft with the letter and the CV attached |
+| `Mark ...` | Moves the application to applied, replied, interview, offer, rejected, or closed |
+
+Mark creates the application row when the posting has none yet (`channel: site`,
+`status: to-apply`) and then writes the new status, so every transition appends an
+`application_events` row.
+
+**Draft mail never sends.** It creates a draft and shows the returned draft id plus the
+sentence: "Open Gmail and press send — this tool never sends." You press send.
+
+**The address is never invented.** An address comes from exactly two places: an address
+found in the posting's own description, or one you paste into the row's address field. With
+neither, the button is disabled and the row says `no address published`. As of the current
+50 postings, that is every row: none of them publishes an address.
+
+**Letters are deterministic.** `lib/letter.mjs` composes only `data/profile.json` facts and
+the posting's title/company. `lintLetter` is the guardrail: it flags a years claim the
+profile cannot support, an employer that is not in `profile.employment.employers`, "senior"
+as a self-description, a technology that is not in `profile.skills`, and a letter under 120
+words. Every generated letter passes its own linter; the dashboard shows the linter result
+next to the letter.
 
 ## Files
 

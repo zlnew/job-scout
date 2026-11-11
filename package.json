@@ -8,10 +8,11 @@
     "node": ">=22.5"
   },
   "scripts": {
-    "test": "node --test test/score.test.mjs test/db.test.mjs",
+    "test": "node --test test/score.test.mjs test/db.test.mjs test/letter.test.mjs test/serve.test.mjs",
     "scan": "node bin/scan.mjs",
     "shortlist": "node bin/shortlist.mjs",
     "apply": "node bin/apply.mjs",
+    "dash": "node bin/serve.mjs",
     "track": "node bin/track.mjs",
     "report": "node bin/report.mjs",
     "cycle": "node bin/scan.mjs && node bin/shortlist.mjs && node bin/report.mjs",
