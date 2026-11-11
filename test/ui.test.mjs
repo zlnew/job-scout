@@ -109,7 +109,11 @@ test('filter state survives pagination links', async () => {
 test('each posting has a native details block and the description is escaped', async () => {
   const res = await get('/?per=100');
   assert.equal(res.status, 200);
-  assert.equal((res.html.match(/<details/g) || []).length, TOTAL, 'expected one details element per posting');
+  assert.equal(
+    (res.html.match(/<details class="details">/g) || []).length,
+    TOTAL,
+    'expected one description details element per posting',
+  );
   assert.equal(res.html.includes('<script>alert(1)</script>'), false, 'raw script tag leaked into the board');
   assert.ok(
     res.html.includes('&lt;script&gt;alert(1)&lt;/script&gt;Never trust this description.'),

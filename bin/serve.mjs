@@ -303,14 +303,19 @@ export function lastReportFile(dir = PATHS.out) {
 // ---------- rendering ----------
 
 function scoreCell(verdict) {
-  const decision = escapeHtml(verdict.decision);
-  return `<span class="dec d-${decision}"><strong>${Number(verdict.score) || 0}</strong> ${decision}</span>`;
+  const score = Number(verdict.score) || 0;
+  return `<span class="chip score-chip" title="Score ${score} of 100">${score}</span>`;
+}
+
+function decisionCell(verdict) {
+  const decision = verdict.decision || 'skip';
+  return `<span class="chip dec d-${escapeHtml(decision)}">${escapeHtml(decision)}</span>`;
 }
 
 function statusCell(app) {
   const status = app?.status ? String(app.status) : 'new';
   const slug = status.replace(/[^a-z-]/gi, '');
-  return `<span class="st st-${slug}">${escapeHtml(status)}</span>`;
+  return `<span class="chip st st-${slug}">${escapeHtml(status)}</span>`;
 }
 
 function statusOptions(app) {
@@ -330,9 +335,8 @@ function detailsHtml(posting, verdict) {
     items.length
       ? `<ul class="${cls}">${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
       : `<p class="${cls} is-empty">${empty}</p>`;
-  return `<p class="preview">${escapeHtml(preview)}${description.length > 160 ? '…' : ''}</p>
-<details class="details">
-  <summary class="details-toggle">Details</summary>
+  return `<details class="details">
+  <summary class="details-toggle">Description and score details</summary>
   <div class="details-body">
     <p class="desc">${description ? escapeHtml(description) : 'No description was published.'}</p>
     <h3>Why this score</h3>
@@ -349,7 +353,7 @@ function rowHtml({ posting, verdict, app, contact }) {
   const company = escapeHtml(posting.company || '—');
   const where = escapeHtml(whereLabel(posting));
   const posted = escapeHtml(posting.published || '—');
-  const salary = posting.salary ? escapeHtml(posting.salary) : '—';
+  const salary = posting.salary ? escapeHtml(posting.salary) : '<span class="muted">salary not listed</span>';
   const url = safeUrl(posting.url);
   const openSite = url
     ? `<a class="btn" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open site</a>`
@@ -357,34 +361,46 @@ function rowHtml({ posting, verdict, app, contact }) {
   const text = [posting.title, posting.company, posting.city].filter(Boolean).join(' ').toLowerCase();
   const address = contact || '';
 
-  return `<tr class="posting" data-posting-id="${id}" data-score="${Number(verdict.score) || 0}" data-decision="${escapeHtml(verdict.decision)}" data-status="${escapeHtml(app?.status || 'new')}" data-text="${escapeHtml(text)}">
-  <td class="c-score" data-label="Score">${scoreCell(verdict)}</td>
-  <td class="c-title" data-label="Role"><span class="title-text">${title}</span>${detailsHtml(posting, verdict)}</td>
-  <td class="c-company" data-label="Company">${company}</td>
-  <td class="c-where" data-label="Where">${where}</td>
-  <td class="c-date" data-label="Posted">${posted}</td>
-  <td class="c-salary" data-label="Salary">${salary}</td>
-  <td class="c-status" data-label="Status">${statusCell(app)}</td>
-  <td class="c-actions" data-label="Actions">
-    <div class="actions">
-      ${openSite}
-      <button type="button" class="btn" data-action="letter" data-id="${id}">Letter</button>
-      <span class="draft">
-        <input class="addr" type="email" value="${escapeHtml(address)}" placeholder="recipient address" aria-label="Recipient address for ${title}" autocomplete="off">
-        <button type="button" class="btn" data-action="draft" data-id="${id}"${
-          address ? '' : ' disabled title="No email address was published in this posting. Paste one to enable."'
-        }>Draft mail</button>
-        <span class="hint"${address ? ' hidden' : ''}>no address published</span>
-      </span>
-      <label class="mark">Mark
-        <select data-action="status" data-id="${id}" aria-label="Application status for ${title}">
-          <option value="">choose</option>
-          ${statusOptions(app)}
-        </select>
-      </label>
+  const description = String(posting.description ?? '').trim();
+  const preview = description.replace(/\s+/g, ' ').slice(0, 200);
+
+  return `<article class="job" data-posting-id="${id}" data-score="${Number(verdict.score) || 0}" data-decision="${escapeHtml(verdict.decision)}" data-status="${escapeHtml(app?.status || 'new')}" data-text="${escapeHtml(text)}">
+  <div class="job-head">
+    <h2 class="job-title">${title}</h2>
+    <div class="chips">
+      ${scoreCell(verdict)}
+      ${decisionCell(verdict)}
+      ${statusCell(app)}
     </div>
-  </td>
-</tr>`;
+  </div>
+  <p class="job-meta">
+    <span class="job-company">${company}</span>
+    <span>${where}</span>
+    <span>posted ${posted}</span>
+    <span class="job-salary">${salary}</span>
+  </p>
+  ${preview ? `<p class="preview">${escapeHtml(preview)}${description.length > 200 ? '…' : ''}</p>` : ''}
+  <div class="job-actions">
+    ${openSite}
+    <button type="button" class="btn" data-action="letter" data-id="${id}">Letter</button>
+    <button type="button" class="btn" data-action="draft" data-id="${id}"${
+      address ? '' : ' disabled title="No email address was published in this posting. Paste one to enable."'
+    }>Draft mail</button>
+    <label class="mark">Status
+      <select data-action="status" data-id="${id}" aria-label="Application status for ${title}">
+        <option value="">choose</option>
+        ${statusOptions(app)}
+      </select>
+    </label>
+  </div>
+  <div class="draft-row">
+    <label class="addr-wrap" for="addr-${id}"><span class="addr-label">Recipient</span>
+      <input class="addr" id="addr-${id}" type="email" value="${escapeHtml(address)}" placeholder="name@company.com" aria-label="Recipient address for ${title}" autocomplete="off">
+    </label>
+    <span class="hint"${address ? ' hidden' : ''}>No address published in this posting. Paste the real one to enable Draft mail.</span>
+  </div>
+  ${detailsHtml(posting, verdict)}
+</article>`;
 }
 
 const STYLE = `
@@ -510,7 +526,7 @@ const CLIENT_JS = `
   document.addEventListener('input', function (event) {
     var input = event.target.closest('input.addr');
     if (!input) return;
-    var wrap = input.closest('.draft');
+    var wrap = input.closest('.job');
     var button = wrap.querySelector('button[data-action="draft"]');
     var hint = wrap.querySelector('.hint');
     var has = input.value.trim().length > 0;
@@ -540,7 +556,7 @@ const CLIENT_JS = `
     }
 
     if (action === 'draft') {
-      var wrap = button.closest('.draft');
+      var wrap = button.closest('.job');
       var input = wrap.querySelector('input.addr');
       var to = input.value.trim();
       if (!to) {
@@ -648,10 +664,13 @@ export function renderPage({
   const shown = rows.length;
   const body = shown
     ? rows.map(rowHtml).join('\n')
-    : `<tr><td colspan="8" class="empty">No postings match these filters. Press "Scan now" to fetch postings (the same searches as <code>npm run scan</code>).</td></tr>`;
+    : `<p class="empty">No postings match these filters. Press "Scan now" to fetch postings (the same searches as <code>npm run scan</code>).</p>`;
   const report = lastReport
     ? `<a href="/report/${encodeURIComponent(lastReport)}">Last report: ${escapeHtml(lastReport)}</a>`
-    : '<span class="summary">No report yet</span>';
+    : '<span class="muted">No report yet</span>';
+  const activeFilters = [f.min > 0, Boolean(f.decision), Boolean(f.hideRejected), f.sort !== 'score'].filter(
+    Boolean,
+  ).length;
   const decisionOptions = [['', 'all'], ...DECISIONS.map((d) => [d, d])]
     .map(([value, label]) => `<option value="${value}"${f.decision === value ? ' selected' : ''}>${label}</option>`)
     .join('');
@@ -681,36 +700,50 @@ export function renderPage({
 <body>
 <header class="top">
   <div class="top-row">
-    <div>
+    <div class="head-text">
       <h1>Job board</h1>
       <p class="summary" id="summary">${counts.postings} postings · ${counts.open} open · ${counts.apply} apply</p>
+      <p class="report-line">${report}</p>
     </div>
     <div class="tools">
-      ${report}
       <a class="btn" href="/compose">Compose</a>
       <a class="btn" href="/settings">Settings</a>
-      <button type="button" class="btn" id="scan">Scan now</button>
+      <button type="button" class="btn primary" id="scan">Scan now</button>
     </div>
   </div>
-  <form class="filters" method="get" action="/" role="search" aria-label="Filters">
-    <label class="grow" for="q">Search <input id="q" name="q" type="search" value="${escapeHtml(f.q)}" placeholder="title, company, city" autocomplete="off"></label>
-    <label for="min">Min score <input id="min" name="min" type="number" inputmode="numeric" min="0" max="100" step="1" value="${escapeHtml(f.min)}"></label>
-    <label for="decision">Decision <select id="decision" name="decision">${decisionOptions}</select></label>
-    <label for="sort">Sort <select id="sort" name="sort">${sortOptions}</select></label>
-    <label for="per">Per page <select id="per" name="per">${perOptions}</select></label>
-    <label class="check" for="hideRejected"><input id="hideRejected" name="hideRejected" type="checkbox" value="1"${f.hideRejected ? ' checked' : ''}> Hide rejected</label>
-    <button type="submit" class="btn primary">Apply</button>
+  <form class="filter-form" method="get" action="/" role="search" aria-label="Filters">
+    <div class="search-row">
+      <label class="grow" for="q">Search <input id="q" name="q" type="search" value="${escapeHtml(f.q)}" placeholder="title, company, city" autocomplete="off"></label>
+      <button type="submit" class="btn primary">Apply</button>
+    </div>
+    <details class="filters" id="filters">
+      <summary>Filters${activeFilters ? ` · ${activeFilters} active` : ''}</summary>
+      <div class="filter-grid">
+        <label for="min">Min score <input id="min" name="min" type="number" inputmode="numeric" min="0" max="100" step="1" value="${escapeHtml(f.min)}"></label>
+        <label for="decision">Decision <select id="decision" name="decision">${decisionOptions}</select></label>
+        <label for="sort">Sort <select id="sort" name="sort">${sortOptions}</select></label>
+        <label for="per">Per page <select id="per" name="per">${perOptions}</select></label>
+        <label class="check" for="hideRejected"><input id="hideRejected" name="hideRejected" type="checkbox" value="1"${f.hideRejected ? ' checked' : ''}> Hide rejected</label>
+      </div>
+    </details>
   </form>
+  <script>
+  (function () {
+    var box = document.getElementById('filters');
+    if (!box) return;
+    var wide = window.matchMedia('(min-width: 700px)');
+    var manual = false;
+    var toggle = box.querySelector('summary');
+    if (toggle) toggle.addEventListener('click', function () { manual = true; });
+    function sync() { if (!manual) box.open = wide.matches; }
+    sync();
+    if (wide.addEventListener) wide.addEventListener('change', sync);
+  })();
+  </script>
 </header>
 
-<table class="board">
-  <thead>
-    <tr><th>Score</th><th>Title</th><th>Company</th><th>Where</th><th>Posted</th><th>Salary</th><th>Status</th><th>Actions</th></tr>
-  </thead>
-  <tbody>
+<section class="board" aria-label="Postings">
 ${body}
-  </tbody>
-</table>
 ${pagerHtml}
 
 <div class="panel" id="panel" hidden role="dialog" aria-modal="true" aria-labelledby="panel-title" tabindex="-1">
@@ -1140,20 +1173,30 @@ body { margin: 0; padding: 0 16px 48px; font: 15px/1.5 -apple-system, "Segoe UI"
 a { color: var(--accent); }
 h1 { font-size: 20px; margin: 0 0 2px; }
 img, pre, table { max-width: 100%; }
-.top { position: sticky; top: 0; z-index: 30; margin: 0 -16px 16px; padding: 12px 16px 10px; background: var(--bg); border-bottom: 1px solid var(--border); }
+.top { position: sticky; top: 0; z-index: 30; margin: 0 -16px 16px; padding: 12px 16px 10px; background: var(--bg); border-bottom: 1px solid var(--border); display: block; }
 .top-row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
 .top .spacer { flex: 1 1 auto; }
 .summary { color: var(--muted); font-variant-numeric: tabular-nums; margin: 2px 0 0; }
+.muted { color: var(--muted); }
+.head-text { min-width: 0; }
+.report-line { margin: 2px 0 0; font-size: 12px; }
+.report-line a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 2px; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.report-line a:hover { color: var(--accent); }
 .tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-top: 10px; }
-.filters label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); min-width: 0; }
-.filters .grow { flex: 1 1 220px; }
-.filters input, .filters select { width: 100%; min-width: 0; }
-.filters .check { flex-direction: row; align-items: center; gap: 6px; font-size: 13px; color: var(--text); min-height: 40px; }
-.filters .check input { width: auto; min-height: 0; }
+.filter-form { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.search-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.filter-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); min-width: 0; }
+.search-row .grow { flex: 1 1 240px; min-width: 0; }
+.search-row .btn { flex: 0 0 auto; }
+.filter-form input, .filter-form select { width: 100%; min-width: 0; }
+.filters { display: block; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.filters > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text); }
+.filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; padding: 0 12px 12px; }
+.filter-form .check { flex-direction: row; align-items: center; gap: 8px; font-size: 13px; color: var(--text); min-height: 40px; }
+.filter-form .check input { width: auto; min-height: 0; }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
-.btn, .filters input, .filters select, .addr, .mark select, .settings input, .settings textarea, .settings select, .compose .f {
+.btn, .filter-form input, .filter-form select, .addr, .mark select, .settings input, .settings textarea, .settings select, .compose .f {
   min-height: 40px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
   background: var(--surface-2); color: var(--text);
 }
@@ -1162,24 +1205,38 @@ button { cursor: pointer; }
 .btn:disabled, .btn.is-off { color: var(--muted); background: var(--surface); border-color: var(--border); cursor: not-allowed; opacity: .7; }
 .btn.primary { border-color: var(--accent); color: var(--bg); background: var(--accent); font-weight: 600; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.board { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: var(--radius); overflow: hidden; }
-th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
-th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); background: var(--surface-2); position: sticky; top: 0; }
-tbody tr:hover { background: var(--surface-2); }
-td.c-title { min-width: 220px; }
-td.c-score, td.c-date, td.c-salary { white-space: nowrap; font-variant-numeric: tabular-nums; }
-td.c-actions { min-width: 320px; }
-.draft { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.addr { width: 190px; }
-.hint { font-size: 11px; color: var(--warn); }
+.board { display: flex; flex-direction: column; gap: 12px; }
+.job { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+.job-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; }
+.job-title { font-size: 16px; line-height: 1.35; margin: 0; font-weight: 600; overflow-wrap: anywhere; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip { display: inline-flex; align-items: center; justify-content: center; min-height: 24px; padding: 1px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); color: var(--text); font-size: 12px; font-weight: 600; line-height: 1.4; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.score-chip { min-width: 40px; background: #0d2436; border-color: #2f6f9f; color: #cfe8ff; }
+.d-apply { background: #15361f; border-color: #2f7d4f; color: #a8f0c0; }
+.d-review { background: #3a2d10; border-color: #8a6a1f; color: #ffd88a; }
+.d-skip { background: #262a2f; border-color: #4a535e; color: #c3ccd6; }
+.d-reject { background: #3a1618; border-color: #8f3b3b; color: #ffb0b0; }
+.st-new { background: var(--surface-2); border-style: dashed; color: var(--muted); }
+.st-applied, .st-replied, .st-interview, .st-offer { background: #102a44; border-color: #3f7fb5; color: #b9dcff; }
+.st-rejected { background: #3a1618; border-color: #8f3b3b; color: #ffb0b0; }
+.st-closed { background: #262a2f; border-color: #4a535e; color: #c3ccd6; }
+.job-meta { display: flex; flex-wrap: wrap; gap: 2px 14px; margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+.job-company { color: var(--text); font-weight: 500; }
+.job-salary { font-variant-numeric: tabular-nums; }
+.job-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.mark { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
+.draft-row { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-top: 8px; }
+.addr-wrap { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
+.addr { width: 180px; max-width: 100%; }
+.hint { font-size: 12px; color: var(--warn); }
 .title-text { font-weight: 600; }
 .preview { margin: 4px 0 0; color: var(--muted); font-weight: 400; font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.details { margin-top: 2px; }
-.details-toggle { display: inline-flex; align-items: center; min-height: 40px; color: var(--accent); cursor: pointer; font-weight: 500; font-size: 13px; }
-.details-body { margin: 4px 0; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); }
+.details { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 4px; }
+.details-toggle { display: flex; align-items: center; gap: 8px; min-height: 40px; color: var(--accent); cursor: pointer; font-weight: 500; font-size: 13px; }
+.details-body { margin: 4px 0 0; padding: 12px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); }
 .details-body h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 12px 0 4px; }
 .details-body h3:first-of-type { margin-top: 10px; }
-.desc { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.desc { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-weight: 400; color: var(--muted); font-size: 14px; line-height: 1.55; max-height: 40vh; overflow: auto; }
 .reasons, .flags { margin: 0; padding-left: 18px; }
 .flags li { color: var(--warn); }
 .reasons li, .flags li { margin: 2px 0; }
@@ -1210,9 +1267,10 @@ td.c-actions { min-width: 320px; }
 #panel-note { margin: 0 0 10px; color: var(--muted); }
 #panel-text { white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 10px; margin: 0 0 10px; }
 .panel-actions { display: flex; gap: 8px; }
-.compose { display: flex; flex-direction: column; gap: 14px; max-width: 760px; }
+.compose { display: flex; flex-direction: column; gap: 14px; max-width: 760px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
 .compose label.f { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--muted); }
 .compose .f { width: 100%; }
+.compose label.f { background: none; border: 0; padding: 0; border-radius: 0; }
 .compose textarea.f { resize: vertical; min-height: 320px; line-height: 1.55; }
 .compose .opt { color: var(--muted); font-weight: 400; }
 .compose .hint { color: var(--muted); font-size: 12px; }
@@ -1225,7 +1283,7 @@ td.c-actions { min-width: 320px; }
 .setting-label { color: var(--muted); }
 .settings input, .settings textarea, .settings select, .setting input[type=text], .setting input[type=number] { width: 100%; min-width: 0; }
 .settings textarea { min-height: 100px; resize: vertical; }
-.src { font-size: 11px; color: var(--muted); }
+.src { display: inline-flex; align-self: flex-start; font-size: 11px; padding: 1px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); color: var(--muted); }
 .src-db { color: var(--ok); }
 .savebar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 #save-status.err { color: var(--danger); }
@@ -1236,23 +1294,16 @@ td.c-actions { min-width: 320px; }
   .top { margin: 0 -12px 12px; padding: 10px 12px 8px; }
   .top-row { align-items: stretch; flex-direction: column; }
   .tools { flex-wrap: wrap; }
-  .filters { display: grid; grid-template-columns: 1fr; gap: 10px; }
-  .filters label, .filters input, .filters select { width: 100%; }
-  .filters .check { min-height: 44px; }
-  .board, .board thead, .board tbody, .board tr, .board td { display: block; width: 100%; }
-  .board { background: none; border-radius: 0; overflow: visible; }
-  .board thead { display: none; }
-  .board tr { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; padding: 10px; }
-  .board td { border: 0; padding: 4px 2px; }
-  .board td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 2px; }
-  .board td.c-title::before, .board td.c-actions::before { display: none; }
-  .board td.c-title { min-width: 0; }
-  .board td.c-actions { min-width: 0; padding-top: 10px; }
-  .actions { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
-  .actions .btn, .actions .draft, .actions .addr, .actions .mark, .actions .mark select { width: 100%; }
-  .draft { flex-direction: column; align-items: stretch; }
+  .filter-form { gap: 8px; }
+  .search-row { flex-wrap: wrap; }
+  .search-row .btn { flex: 0 0 auto; }
+  .filter-grid { grid-template-columns: 1fr; }
+  .job { padding: 12px; }
+  .job-actions .btn, .job-actions .mark { flex: 1 1 auto; }
+  .job-actions .mark select { width: 100%; }
+  .addr-wrap { width: 100%; }
   .addr { width: 100%; }
-  .btn, .page-btn, .filters input, .filters select, .addr, .mark select, .compose .f, .settings input, .settings textarea, .settings select, summary.details-toggle { min-height: 44px; }
+  .btn, .page-btn, .addr, .mark select, .compose .f, .settings input, .settings textarea, .settings select, summary.details-toggle { min-height: 44px; }
   .page-links { width: 100%; }
   .page-btn { flex: 1 1 auto; justify-content: center; }
   .settings-grid { grid-template-columns: 1fr; }
