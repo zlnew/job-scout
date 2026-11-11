@@ -12,6 +12,7 @@
     "scan": "node bin/scan.mjs",
     "shortlist": "node bin/shortlist.mjs",
     "apply": "node bin/apply.mjs",
+    "track": "node bin/track.mjs",
     "report": "node bin/report.mjs",
     "cycle": "node bin/scan.mjs && node bin/shortlist.mjs && node bin/report.mjs",
     "migrate": "node bin/migrate.mjs"

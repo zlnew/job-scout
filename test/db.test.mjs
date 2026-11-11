@@ -180,3 +180,23 @@ test('migration import of a 2-row fixture is idempotent across two runs', () => 
     s.cleanup();
   }
 });
+
+test('a row without posting_id is updated by id, never duplicated', () => {
+  // Regression: historical migrated applications have no posting_id. Updating one used to
+  // fall through to the insert path and silently create a duplicate row.
+  const s = scratch();
+  try {
+    openDb(s.db);
+    const created = upsertApplication({ company: 'Ajaib', role: 'Staff Engineer', channel: 'LinkedIn', status: 'scored' });
+    assert.equal(created.created, true);
+    const id = created.id;
+
+    const updated = upsertApplication({ id, status: 'applied' });
+    assert.equal(updated.created, false);
+    assert.equal(updated.status_changed, true);
+    assert.equal(listApplications().length, 1, 'must not insert a second row');
+    assert.deepEqual(listEvents(id).map((e) => e.status), ['scored', 'applied']);
+  } finally {
+    s.cleanup();
+  }
+});
