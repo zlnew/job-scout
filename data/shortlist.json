@@ -1,0 +1,1049 @@
+{
+  "updated_at": "2026-11-11T15:02:25.611Z",
+  "rubric": {
+    "level": 20,
+    "stack": 25,
+    "domain": 20,
+    "geo": 15,
+    "recency": 10,
+    "comp": 10
+  },
+  "floor_idr": 12000000,
+  "count": 50,
+  "entries": [
+    {
+      "id": "fungsi:backend-engineer-money-ajaib",
+      "title": "Backend Engineer - Money",
+      "company": "Ajaib",
+      "city": "Jakarta",
+      "remote": true,
+      "url": "https://fungsi.id/backend-engineer-money-ajaib",
+      "salary": null,
+      "published": "2026-11-02",
+      "score": 90,
+      "decision": "apply",
+      "reasons": [
+        "asks 2+ years (within 3-5 band)",
+        "stack match: golang, databases, api",
+        "domain: fintech, product",
+        "remote"
+      ],
+      "flags": [
+        "salary not disclosed"
+      ],
+      "components": {
+        "level": 20,
+        "stack": 20,
+        "domain": 20,
+        "geo": 15,
+        "recency": 10,
+        "comp": 5
+      }
+    },
+    {
+      "id": "fungsi:sr-backend-engineer-i-us-stocks-ajaib",
+      "title": "Sr. Backend Engineer I - US Stocks",
+      "company": "Ajaib",
+      "city": "Jakarta",
+      "remote": true,
+      "url": "https://fungsi.id/sr-backend-engineer-i-us-stocks-ajaib",
+      "salary": null,
+      "published": "2026-11-09",
+      "score": 79,
+      "decision": "apply",
+      "reasons": [
+        "asks 4+ years (within 3-5 band)",
+        "stack match: golang, databases, api",
+        "domain: fintech, product",
+        "remote"
+      ],
+      "flags": [
+        "senior-title: apply as mid, do not claim the level",
+        "salary not disclosed"
+      ],
+      "components": {
+        "level": 9,
+        "stack": 20,
+        "domain": 20,
+        "geo": 15,
+        "recency": 10,
+        "comp": 5
+      }
+    },
+    {
+      "id": "fungsi:senior-backend-engineer-i-platform-ajaib",
+      "title": "Senior Backend Engineer I - Platform",
+      "company": "Ajaib",
+      "city": "Jakarta",
+      "remote": true,
+      "url": "https://fungsi.id/senior-backend-engineer-i-platform-ajaib",
+      "salary": null,
+      "published": "2026-11-04",
+      "score": 79,
+      "decision": "apply",
+      "reasons": [
+        "asks 4+ years (within 3-5 band)",
+        "stack match: golang, databases, api",
+        "domain: fintech, product",
+        "remote"
+      ],
+      "flags": [
+        "senior-title: apply as mid, do not claim the level",
+        "salary not disclosed"
+      ],
+      "components": {
+        "level": 9,
+        "stack": 20,
+        "domain": 20,
+        "geo": 15,
+        "recency": 10,
+        "comp": 5
+      }
+    },
+    {
+      "id": "fungsi:senior-backend-engineer-i-money-ajaib",
+      "title": "Senior Backend Engineer I - Money",
+      "company": "Ajaib",
+      "city": "Jakarta",
+      "remote": true,
+      "url": "https://fungsi.id/senior-backend-engineer-i-money-ajaib",
+      "salary": null,
+      "published": "2026-11-02",
+      "score": 79,
+      "decision": "apply",
+      "reasons": [
+        "asks 4+ years (within 3-5 band)",
+        "stack match: golang, databases, api",
+        "domain: fintech, product",
+        "remote"
+      ],
+      "flags": [
+        "senior-title: apply as mid, do not claim the level",
+        "salary not disclosed"
+      ],
+      "components": {
+        "level": 9,
+        "stack": 20,
+        "domain": 20,
+        "geo": 15,
+        "recency": 10,
+        "comp": 5
+      }
+    },
+    {
+      "id": "fungsi:sr-backend-engineer-i-investment-ajaib",
+      "title": "Sr. Backend Engineer I - Investment",
+      "company": "Ajaib",
+      "city": "Jakarta",
+      "remote": true,
+      "url": "https://fungsi.id/sr-backend-engineer-i-investment-ajaib",
+      "salary": null,
+      "published": "2026-11-02",
+      "score": 79,
+      "decision": "apply",
+      "reasons": [
+        "asks 4+ years (within 3-5 band)",
+        "stack match: golang, databases, api",
+        "domain: fintech, product",
+        "remote"
+      ],
+      "flags": [
+        "senior-title: apply as mid, do not claim the level",
+        "salary not disclosed"
+      ],
+      "components": {
+        "level": 9,
+        "stack": 20,
+        "domain": 20,
+        "geo": 15,
+        "recency": 10,
+        "comp": 5
+      }
+    },
+    {
+      "id": "fungsi:senior-software-engineer-backend-grab-5",
+      "title": "Senior Software Engineer, Backend",
+      "company": "Grab",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/senior-software-engineer-backend-grab-5",
+      "salary": null,
+      "published": "2026-10-27",
+      "score": 74,
+      "decision": "apply",
+      "reasons": [
+        "asks 4+ years (within 3-5 band)",
+        "stack match: golang, databases, api",
+        "domain: fintech",
+        "Jabodetabek on-site/hybrid"
+      ],
+      "flags": [
+        "senior-title: apply as mid, do not claim the level",
+        "salary not disclosed"
+      ],
+      "components": {
+        "level": 9,
+        "stack": 20,
+        "domain": 20,
+        "geo": 13,
+        "recency": 7,
+        "comp": 5
+      }
+    },
+    {
+      "id": "fungsi:backend-software-engineer-ai-finance-agent-bjak",
+      "title": "Backend Software Engineer - AI Finance Agent",
+      "company": "Bjak",
+      "city": null,
+      "remote": true,
+      "url": "https://fungsi.id/backend-software-engineer-ai-finance-agent-bjak",
+      "salary": null,
+      "published": "2026-07-15",
+      "score": 60,
+      "decision": "review",
+      "reasons": [
+        "asks 3+ years (within 3-5 band)",
+        "domain: fintech, product",
+        "remote"
+      ],
+      "flags": [
+        "weak stack signal in posting text",
+        "stale: posted 119 days ago",
+        "salary not disclosed"
+      ],
+      "components": {
+        "level": 20,
+        "stack": 0,
+        "domain": 20,
+        "geo": 15,
+        "recency": 0,
+        "comp": 5
+      }
+    },
+    {
+      "id": "fungsi:senior-software-engineer-backend-insurance-grab",
+      "title": "Senior Software Engineer, Backend - Insurance",
+      "company": "Grab",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/senior-software-engineer-backend-insurance-grab",
+      "salary": null,
+      "published": "2026-09-30",
+      "score": 56,
+      "decision": "review",
+      "reasons": [
+        "stack match: golang, databases",
+        "domain: fintech",
+        "Indonesia but outside Jabodetabek"
+      ],
+      "flags": [
+        "years requirement not stated",
+        "senior-title: apply as mid, do not claim the level",
+        "salary not disclosed"
+      ],
+      "components": {
+        "level": 6,
+        "stack": 15,
+        "domain": 20,
+        "geo": 5,
+        "recency": 5,
+        "comp": 5
+      }
+    },
+    {
+      "id": "fungsi:software-engineer-cermati",
+      "title": "Software Engineer",
+      "company": "Cermati",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/software-engineer-cermati",
+      "salary": null,
+      "published": "2026-08-19",
+      "score": 56,
+      "decision": "review",
+      "reasons": [
+        "stack match: js/ts/node, databases",
+        "domain: product",
+        "Jabodetabek on-site/hybrid"
+      ],
+      "flags": [
+        "years requirement not stated",
+        "stale: posted 84 days ago",
+        "salary not disclosed"
+      ],
+      "components": {
+        "level": 12,
+        "stack": 13,
+        "domain": 11,
+        "geo": 13,
+        "recency": 2,
+        "comp": 5
+      }
+    },
+    {
+      "id": "fungsi:backend-developer-bjak",
+      "title": "Backend Developer",
+      "company": "Bjak",
+      "city": null,
+      "remote": true,
+      "url": "https://fungsi.id/backend-developer-bjak",
+      "salary": null,
+      "published": "2026-07-15",
+      "score": 52,
+      "decision": "review",
+      "reasons": [
+        "domain: fintech, product",
+        "remote"
+      ],
+      "flags": [
+        "years requirement not stated",
+        "weak stack signal in posting text",
+        "stale: posted 119 days ago",
+        "salary not disclosed"
+      ],
+      "components": {
+        "level": 12,
+        "stack": 0,
+        "domain": 20,
+        "geo": 15,
+        "recency": 0,
+        "comp": 5
+      }
+    },
+    {
+      "id": "fungsi:product-engineer-mattel",
+      "title": "Product Engineer",
+      "company": "Mattel",
+      "city": "Bekasi",
+      "remote": false,
+      "url": "https://fungsi.id/product-engineer-mattel",
+      "salary": null,
+      "published": "2026-08-12",
+      "score": 44,
+      "decision": "skip",
+      "reasons": [
+        "asks 3+ years (within 3-5 band)",
+        "Bekasi — home city"
+      ],
+      "flags": [
+        "weak stack signal in posting text",
+        "stale: posted 91 days ago",
+        "salary not disclosed"
+      ],
+      "components": {
+        "level": 20,
+        "stack": 0,
+        "domain": 4,
+        "geo": 15,
+        "recency": 0,
+        "comp": 5
+      }
+    },
+    {
+      "id": "fungsi:senior-backend-engineer-ii-team-lead-us-stocks-ajaib",
+      "title": "Senior Backend Engineer II (Team Lead) - US Stocks",
+      "company": "Ajaib",
+      "city": "Jakarta",
+      "remote": true,
+      "url": "https://fungsi.id/senior-backend-engineer-ii-team-lead-us-stocks-ajaib",
+      "salary": null,
+      "published": "2026-11-09",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 6+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 6+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:sr-backend-engineer-ii-us-stocks-ajaib",
+      "title": "Sr. Backend Engineer II - US Stocks",
+      "company": "Ajaib",
+      "city": "Jakarta",
+      "remote": true,
+      "url": "https://fungsi.id/sr-backend-engineer-ii-us-stocks-ajaib",
+      "salary": null,
+      "published": "2026-11-09",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:staff-engineer-backend-platform-ajaib",
+      "title": "Staff Engineer (Backend) - Platform",
+      "company": "Ajaib",
+      "city": "Jakarta",
+      "remote": true,
+      "url": "https://fungsi.id/staff-engineer-backend-platform-ajaib",
+      "salary": null,
+      "published": "2026-11-08",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 8+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 8+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:software-engineering-manager-ii-grab-2",
+      "title": "Software Engineering Manager II",
+      "company": "Grab",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/software-engineering-manager-ii-grab-2",
+      "salary": null,
+      "published": "2026-11-06",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "title not in accepted tracks: \"Software Engineering Manager II\""
+      ],
+      "flags": [
+        "title not in accepted tracks: \"Software Engineering Manager II\""
+      ]
+    },
+    {
+      "id": "fungsi:senior-backend-engineer-ii-platform-ajaib",
+      "title": "Senior Backend Engineer II - Platform",
+      "company": "Ajaib",
+      "city": "Jakarta",
+      "remote": true,
+      "url": "https://fungsi.id/senior-backend-engineer-ii-platform-ajaib",
+      "salary": null,
+      "published": "2026-11-04",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:senior-software-engineer-mobile-android-consumer-experience-grab-2",
+      "title": "Senior Software Engineer, Mobile (Android) - Consumer Experience",
+      "company": "Grab",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/senior-software-engineer-mobile-android-consumer-experience-grab-2",
+      "salary": null,
+      "published": "2026-11-04",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "title not in accepted tracks: \"Senior Software Engineer, Mobile (Android) - Consumer Experience\""
+      ],
+      "flags": [
+        "title not in accepted tracks: \"Senior Software Engineer, Mobile (Android) - Consumer Experience\""
+      ]
+    },
+    {
+      "id": "fungsi:senior-software-engineer-fullstack-merchant-experience-grab",
+      "title": "Senior Software Engineer, Fullstack - Merchant Experience",
+      "company": "Grab",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/senior-software-engineer-fullstack-merchant-experience-grab",
+      "salary": null,
+      "published": "2026-11-03",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 6+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 6+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:senior-backend-engineer-ii-money-ajaib",
+      "title": "Senior Backend Engineer II - Money",
+      "company": "Ajaib",
+      "city": "Jakarta",
+      "remote": true,
+      "url": "https://fungsi.id/senior-backend-engineer-ii-money-ajaib",
+      "salary": null,
+      "published": "2026-11-02",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:staff-engineer-backend-money-ajaib",
+      "title": "Staff Engineer (Backend) - Money",
+      "company": "Ajaib",
+      "city": "Jakarta",
+      "remote": true,
+      "url": "https://fungsi.id/staff-engineer-backend-money-ajaib",
+      "salary": null,
+      "published": "2026-11-02",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 8+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 8+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:soft-goods-engineer-mattel",
+      "title": "Soft Goods Engineer",
+      "company": "Mattel",
+      "city": "Bekasi",
+      "remote": false,
+      "url": "https://fungsi.id/soft-goods-engineer-mattel",
+      "salary": null,
+      "published": "2026-10-29",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "title does not match accepted track list: \"Soft Goods Engineer\""
+      ],
+      "flags": [
+        "title does not match accepted track list: \"Soft Goods Engineer\""
+      ]
+    },
+    {
+      "id": "fungsi:senior-backend-engineer-first-circle",
+      "title": "Senior Backend Engineer",
+      "company": "First Circle",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/senior-backend-engineer-first-circle",
+      "salary": null,
+      "published": "2026-10-28",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:sr-backend-engineer-ii-investment-ajaib",
+      "title": "Sr. Backend Engineer II - Investment",
+      "company": "Ajaib",
+      "city": "Jakarta",
+      "remote": true,
+      "url": "https://fungsi.id/sr-backend-engineer-ii-investment-ajaib",
+      "salary": null,
+      "published": "2026-10-26",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:staff-backend-engineer-investment-ajaib",
+      "title": "Staff Backend Engineer - Investment",
+      "company": "Ajaib",
+      "city": "Jakarta",
+      "remote": true,
+      "url": "https://fungsi.id/staff-backend-engineer-investment-ajaib",
+      "salary": null,
+      "published": "2026-10-26",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 8+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 8+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:senior-backend-engineer-ii-shared-services-ajaib",
+      "title": "Senior Backend Engineer II - Shared Services",
+      "company": "Ajaib",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/senior-backend-engineer-ii-shared-services-ajaib",
+      "salary": null,
+      "published": "2026-10-24",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:staff-backend-engineer-shared-services-ajaib",
+      "title": "Staff Backend Engineer - Shared Services",
+      "company": "Ajaib",
+      "city": "Jakarta",
+      "remote": true,
+      "url": "https://fungsi.id/staff-backend-engineer-shared-services-ajaib",
+      "salary": null,
+      "published": "2026-10-24",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 8+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 8+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:lead-software-engineer-backend-business-platform-grab",
+      "title": "Lead Software Engineer, Backend - Business Platform",
+      "company": "Grab",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/lead-software-engineer-backend-business-platform-grab",
+      "salary": null,
+      "published": "2026-10-22",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 8+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 8+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:software-engineer-in-test-automation-testing-junior-senior-level-cermati-3",
+      "title": "Software Engineer In Test Automation Testing (junior- senior level)",
+      "company": "Cermati",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/software-engineer-in-test-automation-testing-junior-senior-level-cermati-3",
+      "salary": null,
+      "published": "2026-10-22",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "asks 3+ years (within 3-5 band)",
+        "no explicit Indonesia or remote signal"
+      ],
+      "flags": [
+        "no explicit Indonesia or remote signal"
+      ]
+    },
+    {
+      "id": "fungsi:software-engineer-ii-grand-tiket-com",
+      "title": "Software Engineer II (Growth, Analytics & Discovery)",
+      "company": "Tiket.com",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/software-engineer-ii-grand-tiket-com",
+      "salary": null,
+      "published": "2026-10-14",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "asks 2+ years (within 3-5 band)",
+        "no explicit Indonesia or remote signal"
+      ],
+      "flags": [
+        "no explicit Indonesia or remote signal"
+      ]
+    },
+    {
+      "id": "fungsi:software-engineer-xdof",
+      "title": "Software Engineer",
+      "company": "Xdof",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/software-engineer-xdof",
+      "salary": null,
+      "published": "2026-10-13",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "asks 2+ years (within 3-5 band)",
+        "no explicit Indonesia or remote signal"
+      ],
+      "flags": [
+        "no explicit Indonesia or remote signal"
+      ]
+    },
+    {
+      "id": "fungsi:senior-software-engineer-mobile-android-consumer-experience-grab",
+      "title": "Senior Software Engineer, Mobile (Android) - Consumer Experience",
+      "company": "Grab",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/senior-software-engineer-mobile-android-consumer-experience-grab",
+      "salary": null,
+      "published": "2026-10-08",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "title not in accepted tracks: \"Senior Software Engineer, Mobile (Android) - Consumer Experience\""
+      ],
+      "flags": [
+        "title not in accepted tracks: \"Senior Software Engineer, Mobile (Android) - Consumer Experience\""
+      ]
+    },
+    {
+      "id": "fungsi:senior-full-stack-engineer-ai-builder-covergo-2",
+      "title": "Senior Full Stack Engineer, AI Builder",
+      "company": "CoverGo",
+      "city": "Jakarta",
+      "remote": true,
+      "url": "https://fungsi.id/senior-full-stack-engineer-ai-builder-covergo-2",
+      "salary": null,
+      "published": "2026-10-07",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 6+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 6+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:senior-software-engineer-fullstack-grab",
+      "title": "Senior Software Engineer, Fullstack",
+      "company": "Grab",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/senior-software-engineer-fullstack-grab",
+      "salary": null,
+      "published": "2026-10-07",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 6+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 6+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:senior-software-engineer-ios-consumer-experience-grab",
+      "title": "Senior Software Engineer, iOS - Consumer Experience",
+      "company": "Grab",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/senior-software-engineer-ios-consumer-experience-grab",
+      "salary": null,
+      "published": "2026-10-06",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "title not in accepted tracks: \"Senior Software Engineer, iOS - Consumer Experience\""
+      ],
+      "flags": [
+        "title not in accepted tracks: \"Senior Software Engineer, iOS - Consumer Experience\""
+      ]
+    },
+    {
+      "id": "fungsi:staff-principal-backend-engineer-ajaib",
+      "title": "Principal Backend Engineer",
+      "company": "Ajaib",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/staff-principal-backend-engineer-ajaib",
+      "salary": null,
+      "published": "2026-10-06",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "title not in accepted tracks: \"Principal Backend Engineer\""
+      ],
+      "flags": [
+        "title not in accepted tracks: \"Principal Backend Engineer\""
+      ]
+    },
+    {
+      "id": "fungsi:senior-software-engineer-backend-grab-4",
+      "title": "Senior Software Engineer, Backend",
+      "company": "Grab",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/senior-software-engineer-backend-grab-4",
+      "salary": null,
+      "published": "2026-09-29",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 6+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 6+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:software-engineer-mobile-ios-grab",
+      "title": "Software Engineer, Mobile (iOS)",
+      "company": "Grab",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/software-engineer-mobile-ios-grab",
+      "salary": null,
+      "published": "2026-09-21",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "title not in accepted tracks: \"Software Engineer, Mobile (iOS)\""
+      ],
+      "flags": [
+        "title not in accepted tracks: \"Software Engineer, Mobile (iOS)\""
+      ]
+    },
+    {
+      "id": "fungsi:unity-software-engineer-tripledot-studios",
+      "title": "Unity Software Engineer",
+      "company": "Tripledot Studios",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/unity-software-engineer-tripledot-studios",
+      "salary": null,
+      "published": "2026-09-07",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:lead-software-engineer-backend-build-automation-grab",
+      "title": "Lead Software Engineer, Backend (Build Automation)",
+      "company": "Grab",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/lead-software-engineer-backend-build-automation-grab",
+      "salary": null,
+      "published": "2026-08-28",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 7+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 7+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:digital-transformation-engineer-mattel",
+      "title": "Digital Transformation Engineer",
+      "company": "Mattel",
+      "city": "Bekasi",
+      "remote": false,
+      "url": "https://fungsi.id/digital-transformation-engineer-mattel",
+      "salary": null,
+      "published": "2026-08-27",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "title does not match accepted track list: \"Digital Transformation Engineer\""
+      ],
+      "flags": [
+        "title does not match accepted track list: \"Digital Transformation Engineer\""
+      ]
+    },
+    {
+      "id": "fungsi:industrial-engineer-mattel",
+      "title": "Industrial Engineer",
+      "company": "Mattel",
+      "city": "Bekasi",
+      "remote": false,
+      "url": "https://fungsi.id/industrial-engineer-mattel",
+      "salary": null,
+      "published": "2026-08-27",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "title does not match accepted track list: \"Industrial Engineer\""
+      ],
+      "flags": [
+        "title does not match accepted track list: \"Industrial Engineer\""
+      ]
+    },
+    {
+      "id": "fungsi:senior-software-engineer-cermati",
+      "title": "Senior Software Engineer",
+      "company": "Cermati",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/senior-software-engineer-cermati",
+      "salary": null,
+      "published": "2026-08-27",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "asks 4+ years (within 3-5 band)",
+        "no explicit Indonesia or remote signal"
+      ],
+      "flags": [
+        "no explicit Indonesia or remote signal"
+      ]
+    },
+    {
+      "id": "fungsi:lead-software-engineer-backend-grab",
+      "title": "Lead Software Engineer, Backend",
+      "company": "Grab",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/lead-software-engineer-backend-grab",
+      "salary": null,
+      "published": "2026-08-24",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 6+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 6+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:process-engineer-mattel",
+      "title": "Process Engineer",
+      "company": "Mattel",
+      "city": "Bekasi",
+      "remote": false,
+      "url": "https://fungsi.id/process-engineer-mattel",
+      "salary": null,
+      "published": "2026-08-20",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "title does not match accepted track list: \"Process Engineer\""
+      ],
+      "flags": [
+        "title does not match accepted track list: \"Process Engineer\""
+      ]
+    },
+    {
+      "id": "fungsi:lead-software-engineer-backend-consumer-experience-grab",
+      "title": "Lead Software Engineer, Backend - Consumer Experience",
+      "company": "Grab",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/lead-software-engineer-backend-consumer-experience-grab",
+      "salary": null,
+      "published": "2026-08-19",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:product-development-engineer-mattel",
+      "title": "Product Development Engineer",
+      "company": "Mattel",
+      "city": "Bekasi",
+      "remote": false,
+      "url": "https://fungsi.id/product-development-engineer-mattel",
+      "salary": null,
+      "published": "2026-05-09",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "title does not match accepted track list: \"Product Development Engineer\""
+      ],
+      "flags": [
+        "title does not match accepted track list: \"Product Development Engineer\""
+      ]
+    },
+    {
+      "id": "fungsi:full-stack-developer-team-leadwfh-remote-fuku",
+      "title": "Full Stack Developer Team LeadWFH/Remote",
+      "company": "Fuku",
+      "city": "Jakarta",
+      "remote": true,
+      "url": "https://fungsi.id/full-stack-developer-team-leadwfh-remote-fuku",
+      "salary": null,
+      "published": "2026-04-08",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 6+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 6+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:full-stack-developerremote-wfh-fuku",
+      "title": "Full Stack DeveloperRemote/WFH",
+      "company": "Fuku",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/full-stack-developerremote-wfh-fuku",
+      "salary": null,
+      "published": "2026-03-17",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ],
+      "flags": [
+        "requires 5+ years; policy refuses 5+ regardless of fit"
+      ]
+    },
+    {
+      "id": "fungsi:engineering-technician-siloam-hospitals-4",
+      "title": "Engineering Technician",
+      "company": "Siloam Hospitals",
+      "city": "Bekasi",
+      "remote": false,
+      "url": "https://fungsi.id/engineering-technician-siloam-hospitals-4",
+      "salary": null,
+      "published": "2026-02-19",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "title does not match accepted track list: \"Engineering Technician\""
+      ],
+      "flags": [
+        "title does not match accepted track list: \"Engineering Technician\""
+      ]
+    },
+    {
+      "id": "fungsi:sofware-developer-internship",
+      "title": "Sofware Developer Internship",
+      "company": "PT Satu Teknologi Asia",
+      "city": "Jakarta",
+      "remote": false,
+      "url": "https://fungsi.id/sofware-developer-internship",
+      "salary": "Rp 2,4–3 jt",
+      "published": "2023-10-17",
+      "score": 0,
+      "decision": "reject",
+      "reasons": [
+        "title not in accepted tracks: \"Sofware Developer Internship\""
+      ],
+      "flags": [
+        "title not in accepted tracks: \"Sofware Developer Internship\""
+      ]
+    }
+  ]
+}

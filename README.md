@@ -1,266 +1,119 @@
-# job-apply — human-in-the-loop application harness
+# job-apply
 
-Fills job application forms in a real browser, screenshots the result, and **never clicks
-submit**. A human reviews and sends. Scoring and answer rules live in `answers.md`; the
-running record lives in `job-applications.md`.
+Four stages, one workflow: **scan → shortlist → apply → report.** No dependencies, no build
+step, plain Node. A human runs the same commands an agent runs; state lives in SQLite
+(`data/job-apply.db`, built-in `node:sqlite`), and JSON/markdown files are derived exports.
 
-## First run
+## Quick start
 
 ```bash
 cd job-apply
-npm install                     # playwright-core only; browsers are already cached
-npm test                        # one deterministic test against fixtures/application.html
-node scripts/login.mjs https://www.linkedin.com/login   # log in by hand, close the window
+npm test            # 12 policy tests, must stay green
+npm run migrate     # one-shot: import the legacy JSON files into the DB (idempotent)
+npm run scan        # stage 1: pull open postings into the DB
+npm run shortlist   # stage 2: score + rank into the DB, export data/shortlist.json
+npm run report      # stage 4: write out/report-YYYY-MM-DD.md + data/applications.md
 ```
 
-`scripts/login.mjs <url>` opens the persistent profile at `./profile` (gitignored — it holds
-session cookies). Log in once per site; later runs reuse the session. Credentials are never
-scripted or stored by this harness.
-
-## Control UI
+Stage 3 is deliberate, per target:
 
 ```bash
-npm run ui                      # http://127.0.0.1:4780
+node bin/apply.mjs ajaib                       # prints the on-site apply link, records intent
+node bin/apply.mjs ajaib --email \
+  --to denny@example.com --body-file letter.txt # creates a Gmail DRAFT with the CV attached
 ```
 
-A loopback-only page with four screens, each answering one question: **Today** (what needs you
-now, due follow-ups, session health, recent runs), **Postings** (score with its arithmetic, source
-and seen-on badges, filters, one action per row), **Application detail** (timeline, answers with
-provenance, refusals with their fix, screenshot, and a letter editor that appends a revision), and
-**Connections & rules** (sessions per source with a re-auth command, blocked topics, scoring
-thresholds, comp band, and what the agent never does). The page reads `GET /api/today`,
-`/api/postings`, `/api/application/:key`, `/api/letter/:key`, and `/api/sessions`, and updates live
-from the `/api/stream` server-sent event feed; `/api/job/:id` stays for compatibility. Browser work
-is serialised through one queue, and a real submit requires `dryRun: false` plus the stored company
-name as confirmation. The server refuses any `--host` that is not loopback and never reads cookie
-contents or the browser profile.
+## Why it is shaped this way
 
-## Answer bank (`data/profile.json`)
+**Stage 1 — scan.** Source is [fungsi.id](https://fungsi.id/mcp), an Indonesian job index
+exposed as an MCP server (streamable HTTP, read-only, no key). Verified live rather than
+assumed. Its `query` matches **titles only** — `golang`, `vue`, `laravel` return nothing;
+search role names (`backend`, `full stack`, `software engineer`) and let the descriptions
+carry the stack signal.
 
-`data/profile.json` is the machine-readable answer bank: every answer is `{ value, source, scope }`
-where `source` is `confirmed` (Maul said it in `answers.md`) or `derived` (computed from
-`career.json`). There is no `assumed` source; a question neither file answers is listed in
-`blockedTopics` and must be asked instead of guessed. `core/guard.mjs` validates the file
-(`loadProfile`) and refuses a submission with missing provenance or a duplicate identity key.
+**Stage 2 — shortlist and score.** `lib/score.mjs` is pure and testable. The policy is not
+opinion, it comes from `data/answers.md` (your confirmed answers) and `data/profile.json`
+(your facts):
 
-## Screening questions (`core/screening.mjs`)
+- title must be Backend / Platform / Product / Full-Stack / Software Engineer — others are
+  disqualified without scoring;
+- a posting asking **5+ years scores 0**, and asks 3–5 is the accepted band;
+- salary **below the 12M floor is rejected outright**;
+- foreign employers need **full remote** (no relocation);
+- postings older than 45 days are penalised and flagged.
 
-Every recognised form question is matched by `core/screening.mjs` to a profile key before
-anything is filled. `answer` needs `confirmed` or `derived` provenance; a `blockedTopics` key,
-a missing value, or a junk source becomes a `blocked` question instead. `data/screening.md` is
-the human answer bank generated from `describe(data/profile.json)` — fill a value in the
-profile, regenerate, and the question drops off the list.
+**Stage 3 — apply.** Two channels, never guessed. On-site: the script hands you the link and
+records `to-apply`. Email: the script creates a **Gmail draft** with the CV attached and
+stops. It contains no send path on purpose — mail access is scoped to `gmail.compose`, and an
+application leaves the account only when you press send.
 
-## Cover letter (reusable generator)
-
-```bash
-npm run cover -- --company "Kredivo Group" --role "Backend Engineer - Golang (SDE II)" \
-  --jd postings/4440204415.txt --angle backend \
-  --why "one researched line about this company"
-```
-
-Deterministic, not creative: it picks the 2 best-matching bullets from `career.json` (current role
-always leads), quotes the skills the JD actually shares with the resume, and carries your `--why`
-line verbatim. Angles: `backend`, `platform`, `product`, `fullstack`.
-
-- **No `--why` → exit 1, no file.** A letter cannot be written with a hole where the research goes.
-- **JD-only technology is reported as a gap**, never claimed: `gaps in the JD you cannot claim: aws, gcp`.
-- Output goes to `cover-letters/<company>-<role>.md` with a header naming the claimed bullets
-  and the banned technology. Review it before sending — the generator writes, Maul sends.
-
-## Board (persistent state)
-
-`applications.json` is the store — one record per posting (`company`, `role`, `score`, `status`,
-`channel`, `posted`, `applied`, `follow_up`, `url`, `jd`, `notes`). Statuses: `shortlisted`,
-`stretch`, `applied`, `interview`, `offer`, `rejected`.
-
-```bash
-npm run board            # regenerates board.html from applications.json
-```
-
-`board.html` is self-contained (no server, no deps, no CDN) — open it in the browser. Rows sort
-by score, statuses are counted at the top, and an `applied` row goes amber once its follow-up is
-due (applied + 7 days). `board.html` is generated and gitignored; `applications.json` is the
-committed truth. No database on purpose: at 5–10 applications/week `node:sqlite` can import this
-file later if trends are ever worth querying.
-
-## Ledger (`core/ledger.mjs`)
-
-The machine state is `discovered → scored → shortlisted → resolved → prepared → submitted →
-interview | rejected | offer`, with recoverable `blocked` and terminal `skipped`. Illegal edges
-throw, so a double submission cannot pass `applyTransition`. `upsertRecord` merges by the guard's
-identity key, and `appendEvent` appends `{ ts, action, key, ... }` lines to `data/events.jsonl`;
-`readStore`/`writeStore` own the 2-space JSON and `updated`/`applications` key order.
-
-## ATS adapters (`adapters/`)
-
-An ATS is one module plus one saved form snapshot; core never learns an ATS name. Each adapter
-exports `name`, `supportsSubmit`, `detect(url)`, `buildMap(profile, posting)` and optionally
-`prepare(page)` / `submit(page)`; `adapters/index.mjs` holds the registry (`findAdapter`), the
-generic label-based fallback, and `assertAdapterContract`, which `doctor` will also use.
-`buildMap` returns `{ fields, questions, blocked, missing }`: `fields` is what the filler can fill,
-`questions` are controls the adapter recognises but cannot answer, `blocked` is the subset matching
-a `blockedTopics` key (never answered), and `missing` names profile answers the adapter needs.
-Pass the labels you found on the page as `posting.controls` and the map narrows to them, so a
-posting that never rendered an Address field does not report a false miss.
-
-```js
-import { findAdapter } from './adapters/index.mjs';
-const adapter = findAdapter(applyUrl);            // workable | generic
-const map = adapter.buildMap(loadProfile(profilePath), posting);
-```
-
-Adding an ATS: drop `adapters/<name>.mjs` and `fixtures/ats/<name>/form.html`, register it in
-`ADAPTERS` (specific first, generic last), and extend `test/adapters.test.mjs`. Keep
-`supportsSubmit: false` unless the adapter understands every required control on that form.
-
-## Find postings (no pasting URLs needed)
-
-```bash
-node scripts/sweep.mjs                    # Indonesia, default query set from answers.md
-node scripts/sweep.mjs --location Jakarta --pages 2
-node scripts/sweep.mjs --jd 8             # + fetch JD bodies to postings/<id>.txt
-```
-
-Uses LinkedIn's public (unauthenticated) job endpoints — search cards and JD bodies both.
-Filters by title against the rubric, dedupes, ranks by track, writes `postings/sweep-<date>.json`.
-Rate limits are real: a 429 on one query is normal, rerun later rather than hammering it.
-Scoring the JD text stays with the agent.
-
-## Resolve the apply URL (no pasted ATS links)
-
-```bash
-node scripts/resolve.mjs --id 4440204415          # prints a JSON result, writes nothing
-node scripts/resolve.mjs --url https://www.linkedin.com/jobs/view/4440204415
-node scripts/resolve.mjs --limit 5 --write        # shortlisted rows still missing applyUrl
-```
-
-Uses the logged-in persistent profile (or `JOB_APPLY_CDP`) to open the job page, then reports
-where the application really happens as `{ id, url, kind, applyUrl, reason }`:
-
-- `ats` — an employer ATS URL, either an "Apply on company site" link or the target of a popup/navigation.
-- `easy-apply` — LinkedIn's own form. **Always manual**: the harness never fills or submits it.
-- `manual` — no apply control, a timeout, or an ambiguous outcome; check the posting by hand.
-
-`--write` stores `applyUrl`, `applyKind`, and `resolvedAt` on the matching `applications.json`
-record and preserves every other field. It only clicks the apply control once to observe where it
-goes — it never fills or submits a form. Login/authwall redirects exit 4: re-import cookies.
-
-## Browser resolution
-
-Order: `JOB_APPLY_CHROME` binary → `JOB_APPLY_CHANNEL` → a cached Playwright chromium → **system
-Google Chrome**. So a machine with Chrome installed needs no 150MB download. If none is found:
-`npm i -D playwright && npx playwright install chromium`.
-
-## Agent here, browser there (SSH tunnel + CDP)
-
-When the agent runs on a headless box but the logged-in browser lives on your laptop, attach to
-that browser instead of launching one:
-
-```bash
-# 1. laptop: a dedicated Chrome instance you keep open and log into
-google-chrome --remote-debugging-port=9222 --user-data-dir="$HOME/.job-apply-chrome"
-
-# 2. agent machine: forward the port over the tailnet, leave it running
-ssh -N -L 9222:127.0.0.1:9222 <you>@<laptop>
-
-# 3. agent machine: every script now drives the real browser
-JOB_APPLY_CDP=http://127.0.0.1:9222 npm run sweep -- --jd 8
-JOB_APPLY_CDP=http://127.0.0.1:9222 node scripts/fill.mjs --url <ats-url> --fields fields.json --submit
-```
-
-`close()` only disconnects — your browser window stays open. Log into the site **in the debugging
-instance**, not your everyday Chrome. Keep CDP bound to loopback (`-L` does that); never expose it
-to the tailnet directly, since anyone who reaches that port controls the browser.
-
-Zero-build alternative: log in on the laptop, export cookies, `node scripts/import-cookies.mjs`
-on this machine.
-
-## Session setup
-
-If this machine has a display, log in interactively:
-
-```bash
-npm run login                          # LinkedIn
-npm run login -- --site glints         # glints | kalibrr | dealls
-```
-
-**Headless server / plain SSH (no display):** a headed browser cannot run there, so `npm run login`
-exits with the options instead. Seed the session from a machine that has a browser:
-
-```bash
-# 1. laptop: log into the site, export cookies as JSON (Cookie-Editor → Export)
-# 2. copy the file over, then:
-node scripts/import-cookies.mjs /tmp/li-cookies.json --verify https://www.linkedin.com/feed
-```
-
-Accepts Cookie-Editor arrays or Playwright storage-state objects, fixes `SameSite=None` without
-`Secure`, floors float expiries, and rejects unusable entries by name. `--verify` proves the session
-actually works — it exits `1` and says `NOT logged in` when the site bounces you to a login wall.
-Note that cookies are IP/UA sensitive: an imported LinkedIn session can still hit a checkpoint, in
-which case run the harness on the machine with the browser.
-
-## Apply to one job
-
-1. Score the posting with the rubric in `answers.md`. Deal-breaker → stop here.
-2. Research the company (Glassdoor / Indeed / Jobstreet / ex-employee chatter). Record it.
-3. Copy `fields.example.json`, fill it with the real answers from `answers.md`.
-4. Prefill and review:
-
-```bash
-node scripts/fill.mjs --url <application-url> --fields fields.json --hold
-```
-
-The browser stays open with the form filled; read it, fix anything wrong, click submit
-yourself, then close the window. Without `--hold` the script fills, screenshots, and exits.
-
-Exit code `1` = `NEEDS_REVIEW`: at least one field could not be matched. The report lists
-which — fill those by hand. Never widen the field map to force a match.
-
-5. Add a row to `job-applications.md`.
-
-## Submitting automatically (`--submit`)
-
-```bash
-node scripts/fill.mjs --url <ats-url> --fields fields.json --submit
-```
-
-Guards, all enforced in code:
-
-- **Refused on `linkedin.com`** (exit 2, no browser launched) — Easy Apply automation risks the account.
-- **Refused while any field is unfilled** (exit 3, `submitBlocked` in the report) — nothing is sent half-done.
-- **Refused while a required control is still empty** (exit 3).
-- Prints `SUBMITTING: <url> — N fields filled, 0 missed` before the click, then screenshots the
-  result. Use `--hold` instead when you want to review in the browser first; `--hold` is ignored
-  when `--submit` is set.
-
-## What it will not do
-
-- Click submit unless `--submit` is passed explicitly (see above). Without it, nothing is sent.
-- Fill a field it cannot match. Unmatched → `NEEDS_REVIEW`, exit 1.
-- Guess an answer. Missing answer → ask, then record it in `answers.md`.
-- Fabricate experience or screening answers (salary, visas, years per skill).
-- Automate LinkedIn Easy Apply (ToS + account risk). Greenhouse/Lever/Ashby single forms
-  are the intended target; Workday's multi-step wizard expects manual nudges.
-- Store passwords. The profile directory is gitignored for that reason.
+**Stage 4 — report.** `out/report-YYYY-MM-DD.md`: decisions, shortlist, what is waiting on
+you (drafts to send, links to apply), application history, stale postings, next actions.
+It also rewrites `data/applications.md`, a readable mirror of the application log so git
+shows the history.
 
 ## Files
 
-| Path | Role |
-|---|---|
-| `answers.md` | Scoring rubric, hard filters, reusable form answers, `UNKNOWN` list |
-| `applications.json` | Persistent store: every posting with score, status, dates |
-| `board.html` | Generated dashboard (gitignored, rebuilt by `npm run board`) |
-| `shortlist.md` | Dated sweep results with verdicts |
-| `scripts/cover.mjs` | Cover-letter generator (`career.json` + JD → `cover-letters/`) |
-| `scripts/board.mjs` | `applications.json` → `board.html` |
-| `job-applications.md` | Application log |
-| `scripts/sweep.mjs` | LinkedIn public sweep: candidates + JD bodies into `postings/` |
-| `scripts/resolve.mjs` | Finds the employer ATS URL for a LinkedIn job (never applies) |
-| `scripts/login.mjs` | Persistent-profile session setup (needs a display) |
-| `scripts/import-cookies.mjs` | Seed a session from another machine's exported cookies |
-| `scripts/fill.mjs` | Prefills a form, screenshots, refuses to submit |
-| `scripts/browser.mjs` | Chromium resolution + persistent-context launcher |
-| `fields.example.json` | Field-map template |
-| `fixtures/`, `test/` | Deterministic test: fills every matched field, reports misses, never submits |
-| `screenshots/`, `profile/` | Runtime output, gitignored |
+The database is the system of record. Everything else is an input document, a migration
+source, or an export.
+
+```
+data/job-apply.db       SYSTEM OF RECORD: postings, applications, application_events (gitignored)
+data/profile.json       your facts (identity, comp floor/target, titles, geo) — hand-edited
+data/answers.md         the written policy + answer bank this rubric implements — hand-edited
+data/applications.md    export: human-readable application log (committable)
+data/shortlist.json     export: scored snapshot, rescored from the DB every run (committable)
+data/postings.json      migration input only, not written anymore
+data/applications.json  migration input only, not written anymore
+out/report-*.md         export: stage 4 report (committable)
+```
+
+`data/postings.json` and `data/applications.json` are kept because they hold real history,
+but the bins no longer write to them. Import them once with `npm run migrate` (re-running is
+safe and reports 0 imported), then treat the DB as truth.
+
+Inspect the DB without any extra tooling:
+
+```bash
+node -e "const {DatabaseSync}=require('node:sqlite');const d=new DatabaseSync('data/job-apply.db');
+console.log(d.prepare('select posting_id,company,role,status,created_at from applications order by id').all())"
+sqlite3 data/job-apply.db "select status, count(*) from applications group by status"
+sqlite3 data/job-apply.db "select company, role, status, created_at from applications order by id desc limit 10"
+```
+
+Writes use WAL plus a 5000 ms busy timeout and transactions, so an agent and a human can
+write at the same time without clobbering each other.
+
+Schema changes are tracked in the `migrations` table (see `MIGRATIONS` in `lib/db.mjs`).
+Append a new version; never edit an applied one.
+
+## Agent use
+
+Every stage accepts `--json` for machine-readable output, and none of them prompt:
+
+```bash
+node bin/scan.mjs --json --query backend --city jakarta
+node bin/shortlist.mjs --json --top 5 --apply
+node bin/report.mjs --json
+```
+
+An agent's job is stage 2 reading and stage 3 writing: read `shortlist.json`, decide, then
+either hand back links or write a `letter.txt` and call `apply.mjs --email`. Scoring stays
+deterministic so the agent cannot quietly re-rank by vibe.
+
+## Configuration
+
+| Env | Default | Purpose |
+|---|---|---|
+| `FUNGSI_MCP_URL` | `https://api.fungsi.id/mcp` | scan source |
+| `GMAIL_MCP_DIR` | `/home/nova/www/secret/gmail_mcp` | OAuth client + token for draft creation |
+
+Credentials live outside this repo. Never commit them, never inline them here.
+
+## Boundaries
+
+- This harness **never sends** email and **never fills application forms** for you.
+- `data/answers.md` is the source of policy truth. Change the rubric there first, then
+  `lib/score.mjs`, then the test.
+- The 7-day Gmail refresh-token expiry (app in "Testing") means draft creation fails with a
+  403 once a week until the OAuth app is published.

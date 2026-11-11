@@ -1,7 +1,6 @@
 node_modules/
-profile/
-screenshots/
-postings/
-*.report.json
-board.html
 data/backups/
+data/*.db
+data/*.db-wal
+data/*.db-shm
+*.report.json

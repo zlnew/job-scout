@@ -1,25 +1,19 @@
 {
   "name": "job-apply",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "Human-in-the-loop job application harness: persistent browser profile, form prefiller, answer bank, application log.",
-  "scripts": {
-    "login": "node scripts/login.mjs",
-    "fill": "node scripts/fill.mjs",
-    "prepare-application": "node cli/prepare.mjs",
-    "apply": "node cli/apply.mjs",
-    "ui": "node ui/server.mjs",
-    "test": "node --test test/*.test.mjs",
-    "doctor": "node cli/doctor.mjs",
-    "sweep": "node scripts/sweep.mjs",
-    "board": "node scripts/board.mjs",
-    "cover": "node scripts/cover.mjs",
-    "letter": "node cli/letter.mjs",
-    "export-cookies": "node scripts/export-cookies.mjs",
-    "import-cookies": "node scripts/import-cookies.mjs",
-    "scan": "node cli/scan.mjs"
+  "description": "Scan -> shortlist -> apply -> report. One workflow, usable by a human at a terminal and by an agent.",
+  "engines": {
+    "node": ">=22.5"
   },
-  "dependencies": {
-    "playwright-core": "^1.64.0"
+  "scripts": {
+    "test": "node --test test/score.test.mjs test/db.test.mjs",
+    "scan": "node bin/scan.mjs",
+    "shortlist": "node bin/shortlist.mjs",
+    "apply": "node bin/apply.mjs",
+    "report": "node bin/report.mjs",
+    "cycle": "node bin/scan.mjs && node bin/shortlist.mjs && node bin/report.mjs",
+    "migrate": "node bin/migrate.mjs"
   }
 }
