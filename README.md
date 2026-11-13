@@ -244,7 +244,7 @@ deterministic so the agent cannot quietly re-rank by vibe.
 | Env | Default | Purpose |
 |---|---|---|
 | `FUNGSI_MCP_URL` | `https://api.fungsi.id/mcp` | scan source |
-| `GMAIL_MCP_DIR` | `/home/nova/www/secret/gmail_mcp` | OAuth client + token for draft creation |
+| `GMAIL_MCP_DIR` | `~/www/secret/gmail_mcp` | OAuth client + token for draft creation |
 
 Credentials live outside this repo. Never commit them, never inline them here.
 
