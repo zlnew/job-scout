@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// One-shot migration: data/postings.json + data/applications.json -> data/job-apply.db
+// One-shot migration: data/postings.json + data/applications.json -> data/job-scout.db
 //
 //   node bin/migrate.mjs
 //   node bin/migrate.mjs --json

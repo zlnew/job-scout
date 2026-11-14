@@ -1,13 +1,13 @@
 // Dashboard tests. Postings come from a third party, so the renderer must escape
 // them. The one DB test points JOB_APPLY_DB at a temp file before importing the
-// modules that read PATHS, so data/job-apply.db is never touched.
+// modules that read PATHS, so data/job-scout.db is never touched.
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'job-apply-serve-'));
+const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'job-scout-serve-'));
 process.env.JOB_APPLY_DB = path.join(scratch, 'dash.db');
 
 const { escapeHtml, contactEmail, buildBoard, renderPage, applyStatus } = await import('../bin/serve.mjs');

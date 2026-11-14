@@ -1,6 +1,6 @@
 // Draft Mail compose tests. Every draft write goes through an injected stub, so no
 // test reaches the network or a real Gmail mailbox. The DB is a temp file, so
-// data/job-apply.db is never touched.
+// data/job-scout.db is never touched.
 import test, { after, before } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -8,7 +8,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 
-const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'job-apply-compose-'));
+const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'job-scout-compose-'));
 process.env.JOB_APPLY_DB = path.join(scratch, 'compose.db');
 
 const { createHandler, renderComposePage, renderPage, buildBoard } = await import('../bin/serve.mjs');

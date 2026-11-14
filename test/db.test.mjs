@@ -19,7 +19,7 @@ import {
 import { runMigration } from '../bin/migrate.mjs';
 
 function scratch() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'job-apply-db-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'job-scout-db-'));
   return {
     dir,
     db: path.join(dir, 'test.db'),

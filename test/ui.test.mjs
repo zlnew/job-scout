@@ -1,5 +1,5 @@
 // UI tests: server-side pagination, expandable descriptions, and the shared
-// stylesheet. A temp DB keeps data/job-apply.db untouched; no test reaches the
+// stylesheet. A temp DB keeps data/job-scout.db untouched; no test reaches the
 // network or a Gmail mailbox.
 import test, { after, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -8,7 +8,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 
-const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'job-apply-ui-'));
+const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'job-scout-ui-'));
 process.env.JOB_APPLY_DB = path.join(scratch, 'ui.db');
 
 const { createHandler } = await import('../bin/serve.mjs');

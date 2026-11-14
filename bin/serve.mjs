@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Local dashboard for the job-apply harness.
+// Local dashboard for the job-scout harness.
 //
 //   npm run dash            # http://127.0.0.1:4970
 //   JOB_APPLY_PORT=5000 npm run dash
@@ -1707,7 +1707,7 @@ export function createHandler({ createDraft = createGmailDraft } = {}) {
 export function startServer({ port = Number(process.env.JOB_APPLY_PORT) || DEFAULT_PORT, host = HOST } = {}) {
   const server = http.createServer(createHandler());
   server.listen(port, host, () => {
-    console.log(`job-apply dashboard: http://${host}:${port}`);
+    console.log(`job-scout dashboard: http://${host}:${port}`);
     console.log(`database: ${PATHS.db}`);
   });
   const shutdown = () => {

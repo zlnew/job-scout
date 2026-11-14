@@ -105,7 +105,7 @@ fs.writeFileSync(outFile, markdown);
 // Mirror of the application log for git. The DB stays authoritative.
 const mirror = [];
 mirror.push('# Applications', '');
-mirror.push(`_Generated ${summary.generated_at} from data/job-apply.db. Source of truth is the database._`, '');
+mirror.push(`_Generated ${summary.generated_at} from data/job-scout.db. Source of truth is the database._`, '');
 if (!applications.length) mirror.push('_None tracked yet._');
 else {
   mirror.push(

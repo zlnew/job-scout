@@ -1,13 +1,13 @@
-# job-apply
+# job-scout
 
 Four stages, one workflow: **scan → shortlist → apply → report.** No dependencies, no build
 step, plain Node. A human runs the same commands an agent runs; state lives in SQLite
-(`data/job-apply.db`, built-in `node:sqlite`), and JSON/markdown files are derived exports.
+(`data/job-scout.db`, built-in `node:sqlite`), and JSON/markdown files are derived exports.
 
 ## Quick start
 
 ```bash
-cd job-apply
+cd job-scout
 npm test            # 56 tests (policy, DB, letters, dashboard, settings, UI), must stay green
 npm run migrate     # one-shot: import the legacy JSON files into the DB (idempotent)
 npm run reseed-profile          # report what profile.json would change in the DB
@@ -196,7 +196,7 @@ The database is the system of record. Everything else is an input document, a mi
 source, or an export.
 
 ```
-data/job-apply.db       SYSTEM OF RECORD: postings, applications, application_events, profile_fields (gitignored)
+data/job-scout.db       SYSTEM OF RECORD: postings, applications, application_events, profile_fields (gitignored)
 data/profile.json       seed for profile_fields (identity, comp floor/target, titles, geo) - not the truth after first seed
 data/answers.md         the written policy + answer bank this rubric implements — hand-edited
 data/applications.md    export: human-readable application log (committable)
@@ -213,10 +213,10 @@ safe and reports 0 imported), then treat the DB as truth.
 Inspect the DB without any extra tooling:
 
 ```bash
-node -e "const {DatabaseSync}=require('node:sqlite');const d=new DatabaseSync('data/job-apply.db');
+node -e "const {DatabaseSync}=require('node:sqlite');const d=new DatabaseSync('data/job-scout.db');
 console.log(d.prepare('select posting_id,company,role,status,created_at from applications order by id').all())"
-sqlite3 data/job-apply.db "select status, count(*) from applications group by status"
-sqlite3 data/job-apply.db "select company, role, status, created_at from applications order by id desc limit 10"
+sqlite3 data/job-scout.db "select status, count(*) from applications group by status"
+sqlite3 data/job-scout.db "select company, role, status, created_at from applications order by id desc limit 10"
 ```
 
 Writes use WAL plus a 5000 ms busy timeout and transactions, so an agent and a human can

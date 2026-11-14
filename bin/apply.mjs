@@ -88,7 +88,7 @@ async function main() {
     const floor = profile?.compensation?.floor?.value;
     if (floor) console.log(`Salary line: ask ${(floor / 1e6).toFixed(0)}M+, do not go below the floor.`);
     record({ channel: 'site', status: 'to-apply', notes: 'link handed to human' });
-    if (!has('--json')) console.log('\nRecorded as channel=site status=to-apply in the database (data/job-apply.db).');
+    if (!has('--json')) console.log('\nRecorded as channel=site status=to-apply in the database (data/job-scout.db).');
     return;
   }
 

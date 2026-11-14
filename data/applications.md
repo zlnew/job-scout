@@ -1,6 +1,6 @@
 # Applications
 
-_Generated 2026-11-11T15:02:25.647Z from data/job-apply.db. Source of truth is the database._
+_Generated 2026-11-11T15:02:25.647Z from data/job-scout.db. Source of truth is the database._
 
 | Company | Role | Channel | Status | Created | Updated | Posting |
 | --- | --- | --- | --- | --- | --- | --- |

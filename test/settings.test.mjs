@@ -1,5 +1,5 @@
 // Settings tests. The DB is a temp file set before the modules load, so
-// data/job-apply.db is never touched. No test reaches the network or Gmail: the
+// data/job-scout.db is never touched. No test reaches the network or Gmail: the
 // one HTTP server uses the injected draft stub and only exercises settings.
 import test, { after, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -8,7 +8,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 
-const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'job-apply-settings-'));
+const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'job-scout-settings-'));
 process.env.JOB_APPLY_DB = path.join(scratch, 'settings.db');
 
 const db = await import('../lib/db.mjs');

@@ -1,4 +1,4 @@
-# AGENTS.md — job-apply
+# AGENTS.md — job-scout
 
 Single-user, local-only job application harness. Scans postings, scores them, drafts letters and Gmail drafts. The human presses send.
 

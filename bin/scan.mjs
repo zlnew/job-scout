@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Stage 1: scan. Pulls open postings from the fungsi.id index into the SQLite DB
-// (data/job-apply.db). The DB is the system of record.
+// (data/job-scout.db). The DB is the system of record.
 //
 //   node bin/scan.mjs                  # default profile searches
 //   node bin/scan.mjs --query backend --city jakarta
